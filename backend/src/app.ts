@@ -32,7 +32,7 @@ interface DbError extends Error {
 app.use((err: DbError, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
 
-  if (err.code === "23503") {
+  if (err.code === "23503" || err.code === "23001") {
     // foreign_key_violation, e.g. deleting a client that still has estimates
     return res.status(409).json({ error: "This record is referenced by other data and cannot be modified." });
   }
