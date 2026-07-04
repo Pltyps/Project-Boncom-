@@ -18,6 +18,8 @@ export default function ClientPicker({ clients, selectedId, onSelect, onCreated 
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selected = clients.find((c) => c.id === selectedId);
@@ -35,13 +37,21 @@ export default function ClientPicker({ clients, selectedId, onSelect, onCreated 
   }, []);
 
   async function handleCreate() {
-    if (!newName.trim()) return;
-    const client = await api.createClient({ name: newName.trim() });
-    onCreated(client);
-    onSelect(client);
-    setNewName("");
-    setCreating(false);
-    setOpen(false);
+    if (!newName.trim() || saving) return;
+    setSaving(true);
+    setCreateError(null);
+    try {
+      const client = await api.createClient({ name: newName.trim() });
+      onCreated(client);
+      onSelect(client);
+      setNewName("");
+      setCreating(false);
+      setOpen(false);
+    } catch (err) {
+      setCreateError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -96,18 +106,25 @@ export default function ClientPicker({ clients, selectedId, onSelect, onCreated 
               </button>
             </>
           ) : (
-            <div style={{ padding: "0.75rem", display: "flex", gap: "0.5rem" }}>
-              <input
-                className="input"
-                autoFocus
-                placeholder="Client name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-              />
-              <button type="button" className="btn btn-primary" onClick={handleCreate}>
-                Add
-              </button>
+            <div style={{ padding: "0.75rem" }}>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <input
+                  className="input"
+                  autoFocus
+                  placeholder="Client name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                />
+                <button type="button" className="btn btn-primary" onClick={handleCreate} disabled={saving}>
+                  {saving ? "Adding…" : "Add"}
+                </button>
+              </div>
+              {createError && (
+                <p className="field-error" style={{ marginTop: "0.5rem" }}>
+                  {createError}
+                </p>
+              )}
             </div>
           )}
         </div>

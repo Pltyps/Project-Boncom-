@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // Debounce so typing a search term doesn't fire a request per keystroke.
@@ -32,16 +33,32 @@ export default function Dashboard() {
   async function handleDuplicate(id: string, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const copy = await api.duplicateEstimate(id);
-    navigate(`/estimates/${copy.id}`);
+    if (pendingId) return;
+    setPendingId(id);
+    setError(null);
+    try {
+      const copy = await api.duplicateEstimate(id);
+      navigate(`/estimates/${copy.id}`);
+    } catch (err) {
+      setError((err as Error).message);
+      setPendingId(null);
+    }
   }
 
   async function handleDelete(id: string, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm("Delete this estimate? This cannot be undone.")) return;
-    await api.deleteEstimate(id);
-    setEstimates((prev) => prev.filter((est) => est.id !== id));
+    if (pendingId || !confirm("Delete this estimate? This cannot be undone.")) return;
+    setPendingId(id);
+    setError(null);
+    try {
+      await api.deleteEstimate(id);
+      setEstimates((prev) => prev.filter((est) => est.id !== id));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setPendingId(null);
+    }
   }
 
   return (
@@ -68,7 +85,11 @@ export default function Dashboard() {
       {error && <p className="field-error">{error}</p>}
 
       <div className="card">
-        {!loading && estimates.length === 0 ? (
+        {loading && estimates.length === 0 ? (
+          <div className="empty-state">
+            <p>Loading…</p>
+          </div>
+        ) : !loading && estimates.length === 0 ? (
           <div className="empty-state">
             <p>No estimates yet. Create your first one to get started.</p>
             <Link to="/estimates/new" className="btn btn-primary" style={{ marginTop: "1rem" }}>
@@ -101,10 +122,22 @@ export default function Dashboard() {
                   <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
                     <strong>{formatCurrency(est.total)}</strong>
                     <span style={{ display: "flex", gap: "0.25rem" }}>
-                      <button className="btn-ghost" aria-label="Duplicate estimate" title="Duplicate" onClick={(e) => handleDuplicate(est.id, e)}>
+                      <button
+                        className="btn-ghost"
+                        aria-label="Duplicate estimate"
+                        title="Duplicate"
+                        disabled={pendingId === est.id}
+                        onClick={(e) => handleDuplicate(est.id, e)}
+                      >
                         ⧉
                       </button>
-                      <button className="btn-ghost" aria-label="Delete estimate" title="Delete" onClick={(e) => handleDelete(est.id, e)}>
+                      <button
+                        className="btn-ghost"
+                        aria-label="Delete estimate"
+                        title="Delete"
+                        disabled={pendingId === est.id}
+                        onClick={(e) => handleDelete(est.id, e)}
+                      >
                         ✕
                       </button>
                     </span>
