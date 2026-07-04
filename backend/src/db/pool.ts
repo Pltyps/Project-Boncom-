@@ -12,4 +12,9 @@ export const pool = new Pool({
   // Neon (and most hosted Postgres) requires SSL but presents a cert chain
   // that Node won't validate by default; local dev has no SSL at all.
   ssl: connectionString.includes("localhost") ? false : { rejectUnauthorized: false },
+  // On Vercel this module gets re-imported per cold start, and each warm
+  // serverless instance only ever handles one request at a time - a large
+  // pool here just opens connections that sit idle. Neon's pooled endpoint
+  // (PgBouncer) is what actually absorbs concurrency across instances.
+  max: process.env.VERCEL ? 1 : 10,
 });
