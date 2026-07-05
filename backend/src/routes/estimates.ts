@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "../db/pool";
 import { estimateSchema } from "../validation/schemas";
 import { calculateTotals } from "../lib/totals";
+import { recordAudit } from "../lib/auditLog";
 
 export const estimatesRouter = Router();
 
@@ -17,6 +18,8 @@ interface EstimateRow {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  created_by_name: string | null;
+  updated_by_name: string | null;
 }
 
 interface LineItemRow {
@@ -52,6 +55,8 @@ function serializeEstimate(estimate: EstimateRow, lineItems: LineItemRow[]) {
     notes: estimate.notes,
     createdAt: estimate.created_at,
     updatedAt: estimate.updated_at,
+    createdByName: estimate.created_by_name,
+    updatedByName: estimate.updated_by_name,
     lineItems: lineItems.map((li) => ({
       id: li.id,
       description: li.description,
@@ -143,6 +148,30 @@ estimatesRouter.get("/:id", async (req, res, next) => {
   }
 });
 
+// Recent history for one estimate - who created it, who's touched it since,
+// and when. Purely additive (audit_log rows are never updated or deleted),
+// so this is just a read of that append-only trail.
+estimatesRouter.get("/:id/audit-log", async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT action, actor_name, actor_email, created_at
+       FROM audit_log WHERE entity_type = 'estimate' AND entity_id = $1
+       ORDER BY created_at DESC`,
+      [req.params.id]
+    );
+    res.json(
+      result.rows.map((row) => ({
+        action: row.action,
+        actorName: row.actor_name,
+        actorEmail: row.actor_email,
+        createdAt: row.created_at,
+      }))
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Estimate + its line items are created in one transaction so a failed
 // line-item insert can't leave an estimate with no rows behind it.
 estimatesRouter.post("/", async (req, res, next) => {
@@ -151,6 +180,7 @@ estimatesRouter.post("/", async (req, res, next) => {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
   const data = parsed.data;
+  const actor = req.user!;
 
   const client = await pool.connect();
   try {
@@ -158,8 +188,9 @@ estimatesRouter.post("/", async (req, res, next) => {
 
     const estimateResult = await client.query<EstimateRow>(
       `INSERT INTO estimates
-        (client_id, title, status, discount_type, discount_value, tax_type, tax_value, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        (client_id, title, status, discount_type, discount_value, tax_type, tax_value, notes,
+         created_by_email, created_by_name, updated_by_email, updated_by_name)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $9, $10)
        RETURNING *`,
       [
         data.clientId,
@@ -170,6 +201,8 @@ estimatesRouter.post("/", async (req, res, next) => {
         data.taxType,
         data.taxValue,
         data.notes ?? null,
+        actor.email,
+        actor.name,
       ]
     );
     const estimate = estimateResult.rows[0];
@@ -185,6 +218,7 @@ estimatesRouter.post("/", async (req, res, next) => {
       lineItems.push(liResult.rows[0]);
     }
 
+    await recordAudit(client, "estimate", estimate.id, "create", actor);
     await client.query("COMMIT");
     res.status(201).json(serializeEstimate(estimate, lineItems));
   } catch (err) {
@@ -201,6 +235,7 @@ estimatesRouter.put("/:id", async (req, res, next) => {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
   const data = parsed.data;
+  const actor = req.user!;
 
   const client = await pool.connect();
   try {
@@ -210,8 +245,9 @@ estimatesRouter.put("/:id", async (req, res, next) => {
       `UPDATE estimates SET
         client_id = $1, title = $2, status = $3,
         discount_type = $4, discount_value = $5,
-        tax_type = $6, tax_value = $7, notes = $8, updated_at = now()
-       WHERE id = $9
+        tax_type = $6, tax_value = $7, notes = $8, updated_at = now(),
+        updated_by_email = $9, updated_by_name = $10
+       WHERE id = $11
        RETURNING *`,
       [
         data.clientId,
@@ -222,6 +258,8 @@ estimatesRouter.put("/:id", async (req, res, next) => {
         data.taxType,
         data.taxValue,
         data.notes ?? null,
+        actor.email,
+        actor.name,
         req.params.id,
       ]
     );
@@ -247,6 +285,7 @@ estimatesRouter.put("/:id", async (req, res, next) => {
       lineItems.push(liResult.rows[0]);
     }
 
+    await recordAudit(client, "estimate", estimate.id, "update", actor);
     await client.query("COMMIT");
     res.json(serializeEstimate(estimate, lineItems));
   } catch (err) {
@@ -263,6 +302,7 @@ estimatesRouter.delete("/:id", async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Estimate not found" });
     }
+    await recordAudit(pool, "estimate", req.params.id, "delete", req.user!);
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -271,8 +311,10 @@ estimatesRouter.delete("/:id", async (req, res, next) => {
 
 // Copies an estimate and all its line items into a brand new row, always
 // reset to draft status - duplicating a "sent" estimate shouldn't silently
-// mark the copy as already sent to the client.
+// mark the copy as already sent to the client. Attribution on the copy is
+// the person who duplicated it, not carried over from the source.
 estimatesRouter.post("/:id/duplicate", async (req, res, next) => {
+  const actor = req.user!;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -293,8 +335,9 @@ estimatesRouter.post("/:id/duplicate", async (req, res, next) => {
 
     const newEstimateResult = await client.query<EstimateRow>(
       `INSERT INTO estimates
-        (client_id, title, status, discount_type, discount_value, tax_type, tax_value, notes)
-       VALUES ($1, $2, 'draft', $3, $4, $5, $6, $7)
+        (client_id, title, status, discount_type, discount_value, tax_type, tax_value, notes,
+         created_by_email, created_by_name, updated_by_email, updated_by_name)
+       VALUES ($1, $2, 'draft', $3, $4, $5, $6, $7, $8, $9, $8, $9)
        RETURNING *`,
       [
         source.client_id,
@@ -304,6 +347,8 @@ estimatesRouter.post("/:id/duplicate", async (req, res, next) => {
         source.tax_type,
         source.tax_value,
         source.notes,
+        actor.email,
+        actor.name,
       ]
     );
     const newEstimate = newEstimateResult.rows[0];
@@ -318,6 +363,7 @@ estimatesRouter.post("/:id/duplicate", async (req, res, next) => {
       newLineItems.push(liResult.rows[0]);
     }
 
+    await recordAudit(client, "estimate", newEstimate.id, "create", actor);
     await client.query("COMMIT");
     res.status(201).json(serializeEstimate(newEstimate, newLineItems));
   } catch (err) {

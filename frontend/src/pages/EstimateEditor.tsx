@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
-import { formatCurrency } from "../lib/format";
+import { formatCurrency, formatDate } from "../lib/format";
 import { previewTotals } from "../lib/totals";
 import ClientPicker from "../components/ClientPicker";
-import type { AdjustmentType, Client, EstimateStatus, LineItem } from "../types";
+import InfoTooltip from "../components/InfoTooltip";
+import type { AdjustmentType, AuditLogEntry, Client, EstimateStatus, LineItem } from "../types";
 
 const emptyLineItem: LineItem = { description: "", quantity: 1, rate: 0 };
 
@@ -23,6 +24,9 @@ export default function EstimateEditor() {
   const [taxValue, setTaxValue] = useState(0);
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([{ ...emptyLineItem }]);
+  const [createdByName, setCreatedByName] = useState<string | null>(null);
+  const [updatedByName, setUpdatedByName] = useState<string | null>(null);
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -48,9 +52,12 @@ export default function EstimateEditor() {
         setTaxValue(est.taxValue);
         setNotes(est.notes ?? "");
         setLineItems(est.lineItems.length ? est.lineItems : [{ ...emptyLineItem }]);
+        setCreatedByName(est.createdByName);
+        setUpdatedByName(est.updatedByName);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+    api.getAuditLog(id!).then(setAuditLog);
   }, [id, isNew]);
 
   // Recomputed on every render from local state - this is what makes the
@@ -101,7 +108,7 @@ export default function EstimateEditor() {
 
     try {
       const saved = isNew ? await api.createEstimate(payload) : await api.updateEstimate(id!, payload);
-      navigate(`/estimates/${saved.id}`, { replace: true });
+      navigate(`/quoted/estimates/${saved.id}`, { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
         setFieldErrors(err.fieldErrors);
@@ -116,13 +123,13 @@ export default function EstimateEditor() {
   async function handleDelete() {
     if (!id || !confirm("Delete this estimate? This cannot be undone.")) return;
     await api.deleteEstimate(id);
-    navigate("/");
+    navigate("/quoted");
   }
 
   async function handleDuplicate() {
     if (!id) return;
     const copy = await api.duplicateEstimate(id);
-    navigate(`/estimates/${copy.id}`);
+    navigate(`/quoted/estimates/${copy.id}`);
   }
 
   if (loading) return <p>Loading…</p>;
@@ -252,7 +259,16 @@ export default function EstimateEditor() {
         <div className="card totals-summary">
           <h3 className="section-title">Adjustments</h3>
           <div className="field">
-            <label>Discount</label>
+            <label>
+              Discount
+              <InfoTooltip
+                text={
+                  discountType === "percent"
+                    ? `Subtotal × ${discountValue || 0}% = ${formatCurrency(totals.subtotal)} × ${discountValue || 0}% = ${formatCurrency(totals.discountAmount)}`
+                    : `Flat $${discountValue || 0}, capped at the subtotal so it can never make the total negative.`
+                }
+              />
+            </label>
             <div className="adjustment-row">
               <input
                 type="number"
@@ -269,7 +285,16 @@ export default function EstimateEditor() {
             </div>
           </div>
           <div className="field">
-            <label>Tax</label>
+            <label>
+              Tax
+              <InfoTooltip
+                text={
+                  taxType === "percent"
+                    ? `(Subtotal − Discount) × ${taxValue || 0}% = ${formatCurrency(Number(totals.subtotal) - Number(totals.discountAmount))} × ${taxValue || 0}% = ${formatCurrency(totals.taxAmount)}. Tax applies after the discount, not before.`
+                    : `Flat $${taxValue || 0}, added after the discount regardless of the subtotal's size.`
+                }
+              />
+            </label>
             <div className="adjustment-row">
               <input
                 type="number"
@@ -300,11 +325,38 @@ export default function EstimateEditor() {
               <span>{formatCurrency(totals.taxAmount)}</span>
             </div>
             <div className="totals-row total">
-              <span>Total</span>
+              <span>
+                Total
+                <InfoTooltip
+                  text={`${formatCurrency(totals.subtotal)} − ${formatCurrency(totals.discountAmount)} + ${formatCurrency(totals.taxAmount)} = ${formatCurrency(totals.total)}`}
+                />
+              </span>
               <span>{formatCurrency(totals.total)}</span>
             </div>
           </div>
         </div>
+
+        {!isNew && (
+          <div className="card" style={{ padding: "1.25rem" }}>
+            <h3 className="section-title">History</h3>
+            {createdByName && (
+              <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
+                Created by {createdByName}
+                {updatedByName && updatedByName !== createdByName && <> · last edited by {updatedByName}</>}
+              </p>
+            )}
+            <div className="audit-log">
+              {auditLog.map((entry, i) => (
+                <div key={i} className="audit-log-row">
+                  <span>
+                    {entry.action} — {entry.actorName}
+                  </span>
+                  <span>{formatDate(entry.createdAt)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

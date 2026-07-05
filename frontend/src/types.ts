@@ -47,8 +47,17 @@ export interface Estimate {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  createdByName: string | null;
+  updatedByName: string | null;
   lineItems: LineItem[];
   totals: Totals;
+}
+
+export interface AuditLogEntry {
+  action: "create" | "update" | "delete";
+  actorName: string;
+  actorEmail: string;
+  createdAt: string;
 }
 
 export interface EstimateDraft {

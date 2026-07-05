@@ -1,17 +1,19 @@
 import { Router } from "express";
 import { pool } from "../db/pool";
 import { clientSchema } from "../validation/schemas";
+import { recordAudit } from "../lib/auditLog";
 
 // Plain CRUD for the client list. Clients can't be deleted while an
 // estimate still references them - the FK on estimates.client_id is
 // ON DELETE RESTRICT, so that DELETE below relies on Postgres to reject it
-// (caught centrally in index.ts's error handler as a 409).
+// (caught centrally in app.ts's error handler as a 409).
 export const clientsRouter = Router();
 
 clientsRouter.get("/", async (_req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT id, name, email, company, created_at, updated_at
+      `SELECT id, name, email, company, created_at, updated_at,
+        created_by_name, updated_by_name
        FROM clients ORDER BY name ASC`
     );
     res.json(result.rows);
@@ -39,10 +41,13 @@ clientsRouter.post("/", async (req, res, next) => {
       return res.status(400).json({ error: parsed.error.flatten() });
     }
     const { name, email, company } = parsed.data;
+    const actor = req.user!;
     const result = await pool.query(
-      `INSERT INTO clients (name, email, company) VALUES ($1, $2, $3) RETURNING *`,
-      [name, email ?? null, company ?? null]
+      `INSERT INTO clients (name, email, company, created_by_email, created_by_name, updated_by_email, updated_by_name)
+       VALUES ($1, $2, $3, $4, $5, $4, $5) RETURNING *`,
+      [name, email ?? null, company ?? null, actor.email, actor.name]
     );
+    await recordAudit(pool, "client", result.rows[0].id, "create", actor);
     res.status(201).json(result.rows[0]);
   } catch (err) {
     next(err);
@@ -56,14 +61,17 @@ clientsRouter.put("/:id", async (req, res, next) => {
       return res.status(400).json({ error: parsed.error.flatten() });
     }
     const { name, email, company } = parsed.data;
+    const actor = req.user!;
     const result = await pool.query(
-      `UPDATE clients SET name = $1, email = $2, company = $3, updated_at = now()
-       WHERE id = $4 RETURNING *`,
-      [name, email ?? null, company ?? null, req.params.id]
+      `UPDATE clients SET name = $1, email = $2, company = $3, updated_at = now(),
+        updated_by_email = $4, updated_by_name = $5
+       WHERE id = $6 RETURNING *`,
+      [name, email ?? null, company ?? null, actor.email, actor.name, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Client not found" });
     }
+    await recordAudit(pool, "client", req.params.id, "update", actor);
     res.json(result.rows[0]);
   } catch (err) {
     next(err);
@@ -76,6 +84,7 @@ clientsRouter.delete("/:id", async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Client not found" });
     }
+    await recordAudit(pool, "client", req.params.id, "delete", req.user!);
     res.status(204).send();
   } catch (err) {
     next(err);

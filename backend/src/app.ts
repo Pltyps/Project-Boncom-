@@ -3,6 +3,11 @@ import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import { clientsRouter } from "./routes/clients";
 import { estimatesRouter } from "./routes/estimates";
+import { authRouter } from "./routes/auth";
+import { appsRouter } from "./routes/apps";
+import { adminRouter } from "./routes/admin";
+import { requireAuth } from "./middleware/requireAuth";
+import { requireRole } from "./middleware/requireRole";
 
 // Just builds and exports the Express app - no .listen() here. That lives
 // in server.ts (local dev) so this same app can also be wrapped as a single
@@ -16,8 +21,11 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/api/clients", clientsRouter);
-app.use("/api/estimates", estimatesRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/apps", requireAuth, appsRouter);
+app.use("/api/clients", requireAuth, clientsRouter);
+app.use("/api/estimates", requireAuth, estimatesRouter);
+app.use("/api/admin", requireAuth, requireRole("admin"), adminRouter);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
@@ -33,7 +41,10 @@ app.use((err: DbError, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
 
   if (err.code === "23503" || err.code === "23001") {
-    // foreign_key_violation, e.g. deleting a client that still has estimates
+    // 23503 foreign_key_violation (NO ACTION) / 23001 restrict_violation
+    // (explicit ON DELETE RESTRICT, which is what clients->estimates uses) -
+    // Postgres reports these as distinct SQLSTATEs for the same situation:
+    // deleting a row still referenced elsewhere.
     return res.status(409).json({ error: "This record is referenced by other data and cannot be modified." });
   }
   if (err.code === "23505") {

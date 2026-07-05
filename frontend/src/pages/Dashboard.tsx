@@ -38,7 +38,7 @@ export default function Dashboard() {
     setError(null);
     try {
       const copy = await api.duplicateEstimate(id);
-      navigate(`/estimates/${copy.id}`);
+      navigate(`/quoted/estimates/${copy.id}`);
     } catch (err) {
       setError((err as Error).message);
       setPendingId(null);
@@ -92,7 +92,7 @@ export default function Dashboard() {
         ) : !loading && estimates.length === 0 ? (
           <div className="empty-state">
             <p>No estimates yet. Create your first one to get started.</p>
-            <Link to="/estimates/new" className="btn btn-primary" style={{ marginTop: "1rem" }}>
+            <Link to="/quoted/estimates/new" className="btn btn-primary" style={{ marginTop: "1rem" }}>
               New estimate
             </Link>
           </div>
@@ -111,8 +111,8 @@ export default function Dashboard() {
                 className="estimate-list-row"
                 role="link"
                 tabIndex={0}
-                onClick={() => navigate(`/estimates/${est.id}`)}
-                onKeyDown={(e) => e.key === "Enter" && navigate(`/estimates/${est.id}`)}
+                onClick={() => navigate(`/quoted/estimates/${est.id}`)}
+                onKeyDown={(e) => e.key === "Enter" && navigate(`/quoted/estimates/${est.id}`)}
               >
                 <div className="estimate-row-grid">
                   <span className="estimate-title">{est.title}</span>
