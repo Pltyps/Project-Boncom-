@@ -20,6 +20,10 @@ ALTER TABLE clients ADD COLUMN IF NOT EXISTS created_by_email TEXT;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS created_by_name TEXT;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS updated_by_email TEXT;
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS updated_by_name TEXT;
+-- Free-text mailing address (multi-line), printed on the invoice's
+-- "Client's details" block - not normalized into street/city/state since
+-- nothing else here needs to query on address parts individually.
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS address TEXT;
 
 CREATE TABLE IF NOT EXISTS estimates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,6 +47,8 @@ ALTER TABLE estimates ADD COLUMN IF NOT EXISTS created_by_email TEXT;
 ALTER TABLE estimates ADD COLUMN IF NOT EXISTS created_by_name TEXT;
 ALTER TABLE estimates ADD COLUMN IF NOT EXISTS updated_by_email TEXT;
 ALTER TABLE estimates ADD COLUMN IF NOT EXISTS updated_by_name TEXT;
+-- Optional - the printable invoice shows this when set, otherwise omits the line.
+ALTER TABLE estimates ADD COLUMN IF NOT EXISTS due_date DATE;
 
 CREATE TABLE IF NOT EXISTS line_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -17,6 +17,7 @@ interface EstimateRow {
   tax_type: "flat" | "percent";
   tax_value: string;
   notes: string | null;
+  due_date: string | null;
   created_at: string;
   updated_at: string;
   created_by_name: string | null;
@@ -45,6 +46,7 @@ function serializeEstimate(estimate: EstimateRow, lineItems: LineItemRow[]) {
     taxType: estimate.tax_type,
     taxValue: Number(estimate.tax_value),
     notes: estimate.notes,
+    dueDate: estimate.due_date,
     createdAt: estimate.created_at,
     updatedAt: estimate.updated_at,
     createdByName: estimate.created_by_name,
@@ -180,9 +182,9 @@ estimatesRouter.post("/", async (req, res, next) => {
 
     const estimateResult = await client.query<EstimateRow>(
       `INSERT INTO estimates
-        (client_id, title, status, discount_type, discount_value, tax_type, tax_value, notes,
+        (client_id, title, status, discount_type, discount_value, tax_type, tax_value, notes, due_date,
          created_by_email, created_by_name, updated_by_email, updated_by_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $9, $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $10, $11)
        RETURNING *`,
       [
         data.clientId,
@@ -193,6 +195,7 @@ estimatesRouter.post("/", async (req, res, next) => {
         data.taxType,
         data.taxValue,
         data.notes ?? null,
+        data.dueDate ?? null,
         actor.email,
         actor.name,
       ]
@@ -227,9 +230,9 @@ estimatesRouter.put("/:id", async (req, res, next) => {
       `UPDATE estimates SET
         client_id = $1, title = $2, status = $3,
         discount_type = $4, discount_value = $5,
-        tax_type = $6, tax_value = $7, notes = $8, updated_at = now(),
-        updated_by_email = $9, updated_by_name = $10
-       WHERE id = $11
+        tax_type = $6, tax_value = $7, notes = $8, due_date = $9, updated_at = now(),
+        updated_by_email = $10, updated_by_name = $11
+       WHERE id = $12
        RETURNING *`,
       [
         data.clientId,
@@ -240,6 +243,7 @@ estimatesRouter.put("/:id", async (req, res, next) => {
         data.taxType,
         data.taxValue,
         data.notes ?? null,
+        data.dueDate ?? null,
         actor.email,
         actor.name,
         req.params.id,

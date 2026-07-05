@@ -7,18 +7,21 @@ interface Props {
   selectedId: string;
   onSelect: (client: Client) => void;
   onCreated: (client: Client) => void;
+  onUpdated: (client: Client) => void;
 }
 
-// Dropdown search-or-create combobox: pick an existing client, or add a new
-// one inline without leaving the estimate editor. `clients` is owned by the
-// parent (EstimateEditor) so a freshly created client is immediately
-// available without a refetch.
-export default function ClientPicker({ clients, selectedId, onSelect, onCreated }: Props) {
+const emptyForm = { name: "", email: "", address: "" };
+
+// Dropdown search-or-create combobox: pick an existing client, add a new
+// one inline, or edit the currently selected one's contact/address details -
+// all without leaving the estimate editor. `clients` is owned by the parent
+// (EstimateEditor) so create/update are immediately reflected without a refetch.
+export default function ClientPicker({ clients, selectedId, onSelect, onCreated, onUpdated }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [createError, setCreateError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"browse" | "create" | "edit">("browse");
+  const [form, setForm] = useState(emptyForm);
+  const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -29,26 +32,47 @@ export default function ClientPicker({ clients, selectedId, onSelect, onCreated 
     function onClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
-        setCreating(false);
+        setMode("browse");
       }
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  async function handleCreate() {
-    if (!newName.trim() || saving) return;
+  function startCreate() {
+    setForm(emptyForm);
+    setFormError(null);
+    setMode("create");
+  }
+
+  function startEdit() {
+    if (!selected) return;
+    setForm({ name: selected.name, email: selected.email ?? "", address: selected.address ?? "" });
+    setFormError(null);
+    setMode("edit");
+    setOpen(true);
+  }
+
+  async function handleSave() {
+    if (!form.name.trim() || saving) return;
     setSaving(true);
-    setCreateError(null);
+    setFormError(null);
+    const payload = { name: form.name.trim(), email: form.email.trim() || undefined, address: form.address.trim() || undefined };
     try {
-      const client = await api.createClient({ name: newName.trim() });
-      onCreated(client);
-      onSelect(client);
-      setNewName("");
-      setCreating(false);
+      if (mode === "edit" && selected) {
+        const client = await api.updateClient(selected.id, payload);
+        onUpdated(client);
+        onSelect(client);
+      } else {
+        const client = await api.createClient(payload);
+        onCreated(client);
+        onSelect(client);
+      }
+      setForm(emptyForm);
+      setMode("browse");
       setOpen(false);
     } catch (err) {
-      setCreateError((err as Error).message);
+      setFormError((err as Error).message);
     } finally {
       setSaving(false);
     }
@@ -57,21 +81,39 @@ export default function ClientPicker({ clients, selectedId, onSelect, onCreated 
   return (
     <div className="field" ref={containerRef} style={{ position: "relative" }}>
       <label>Client</label>
-      <button
-        type="button"
-        className="input"
-        style={{ textAlign: "left", cursor: "pointer" }}
-        onClick={() => setOpen((v) => !v)}
-      >
-        {selected ? selected.name : "Select a client…"}
-      </button>
+      <div style={{ display: "flex", gap: "0.4rem" }}>
+        <button
+          type="button"
+          className="input"
+          style={{ textAlign: "left", cursor: "pointer", flex: 1 }}
+          onClick={() => {
+            setMode("browse");
+            setOpen((v) => !v);
+          }}
+        >
+          {selected ? selected.name : "Select a client…"}
+        </button>
+        {selected && (
+          <button type="button" className="btn-ghost" title="Edit client details" onClick={startEdit}>
+            Edit
+          </button>
+        )}
+      </div>
 
       {open && (
         <div
           className="card"
-          style={{ position: "absolute", top: "100%", marginTop: 4, width: "100%", zIndex: 20, maxHeight: 280, overflowY: "auto" }}
+          style={{
+            position: "absolute",
+            top: "100%",
+            marginTop: 4,
+            width: "max(100%, 300px)",
+            zIndex: 20,
+            maxHeight: 320,
+            overflowY: "auto",
+          }}
         >
-          {!creating ? (
+          {mode === "browse" && (
             <>
               <div style={{ padding: "0.5rem" }}>
                 <input
@@ -100,31 +142,44 @@ export default function ClientPicker({ clients, selectedId, onSelect, onCreated 
                 type="button"
                 className="btn-ghost"
                 style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 0.75rem", color: "var(--color-accent)" }}
-                onClick={() => setCreating(true)}
+                onClick={startCreate}
               >
                 + Add new client
               </button>
             </>
-          ) : (
-            <div style={{ padding: "0.75rem" }}>
+          )}
+
+          {(mode === "create" || mode === "edit") && (
+            <div style={{ padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <input
+                className="input"
+                autoFocus
+                placeholder="Client name"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              />
+              <input
+                className="input"
+                placeholder="Email (optional)"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+              <textarea
+                className="textarea"
+                rows={3}
+                placeholder="Mailing address (optional) - shown on the printable invoice"
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              />
+              {formError && <span className="field-error">{formError}</span>}
               <div style={{ display: "flex", gap: "0.5rem" }}>
-                <input
-                  className="input"
-                  autoFocus
-                  placeholder="Client name"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                />
-                <button type="button" className="btn btn-primary" onClick={handleCreate} disabled={saving}>
-                  {saving ? "Adding…" : "Add"}
+                <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                  {saving ? "Saving…" : mode === "edit" ? "Save changes" : "Add client"}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => setMode("browse")}>
+                  Cancel
                 </button>
               </div>
-              {createError && (
-                <p className="field-error" style={{ marginTop: "0.5rem" }}>
-                  {createError}
-                </p>
-              )}
             </div>
           )}
         </div>

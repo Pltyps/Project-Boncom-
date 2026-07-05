@@ -7,6 +7,7 @@ export const clientSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),
   email: z.string().trim().email().max(200).optional().or(z.literal("")).transform((v) => v || undefined),
   company: z.string().trim().max(200).optional().transform((v) => v || undefined),
+  address: z.string().trim().max(1000).optional().transform((v) => v || undefined),
 });
 
 export const lineItemSchema = z.object({
@@ -29,6 +30,7 @@ export const estimateSchema = z.object({
   taxType: adjustmentType.default("percent"),
   taxValue: z.coerce.number().finite().nonnegative().default(0),
   notes: z.string().trim().max(2000).optional().transform((v) => v || undefined),
+  dueDate: z.string().trim().optional().or(z.literal("")).transform((v) => v || undefined),
   lineItems: z.array(lineItemSchema).default([]),
 });
 

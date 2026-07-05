@@ -101,8 +101,8 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Segoe UI Variable", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Segoe UI Variable", Roboto,
+    Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   line-height: 1.45;
   transition: background-color 0.15s ease, color 0.15s ease;
@@ -281,11 +281,18 @@ a {
   white-space: normal;
 }
 
-.nav-drawer .btn,
-.nav-drawer .theme-toggle {
+.nav-drawer .btn {
   width: 100%;
   justify-content: flex-start;
   gap: 0.5rem;
+}
+
+.nav-drawer .theme-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  color: var(--color-text);
 }
 
 @media (min-width: 769px) {
@@ -388,9 +395,48 @@ a {
   cursor: not-allowed;
 }
 
-.theme-toggle {
-  font-size: 1.05rem;
-  line-height: 1;
+.theme-toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.theme-switch {
+  position: relative;
+  width: 3.1rem;
+  height: 1.7rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: #e2a53d;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease;
+}
+
+.theme-switch.dark {
+  background: var(--color-navy-panel);
+}
+
+.theme-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: #8a5a12;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease;
+}
+
+.theme-switch.dark .theme-switch-knob {
+  transform: translateX(1.4rem);
+  color: var(--color-navy-panel);
 }
 
 .login-theme-toggle {
@@ -524,6 +570,52 @@ a {
   color: var(--color-text-muted);
 }
 
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.pagination-size {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.pagination-size .select {
+  width: auto;
+  min-height: 2rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pagination-summary {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .pagination-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pagination-controls {
+    justify-content: space-between;
+  }
+}
+
 .editor-layout {
   display: grid;
   grid-template-columns: 1fr 320px;
@@ -533,7 +625,7 @@ a {
 
 .estimate-meta-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -869,24 +961,149 @@ input[type="number"] {
 
 /* ---------- Print ---------- */
 
+/* Hidden on screen - this is a purpose-built invoice document rendered only
+   for @media print, rather than trying to print the interactive editor
+   form controls (which don't make sense as a client-facing document). */
+.invoice-print-only {
+  display: none;
+}
+
 @media print {
-  .top-nav, .toolbar, .btn, .line-items-table button, .adjustment-row select {
+  .top-nav, .nav-drawer, .nav-drawer-backdrop {
     display: none !important;
   }
-  .line-items-table input, .textarea {
-    border: none !important;
-    pointer-events: none;
+  /* Hides every direct child of the editor's wrapper (back link, page
+     header/buttons, the interactive editor-layout) except the invoice. */
+  .main-content > div > *:not(.invoice-print-only) {
+    display: none !important;
   }
-  .editor-layout {
-    grid-template-columns: 1fr 260px;
+  .main-content {
+    padding: 0;
+    max-width: none;
   }
   body {
     background: white;
   }
-  .card {
-    box-shadow: none;
-    border: none;
+  .invoice-print-only {
+    display: block;
+    color: #111;
+    font-size: 12px;
+    padding: 0.5in;
   }
+}
+
+.invoice-logo-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-navy-panel);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--color-navy-panel);
+  margin-bottom: 1.5rem;
+}
+
+.invoice-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.invoice-party {
+  border: 1px solid #d6dbe2;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.invoice-party h4 {
+  color: var(--color-navy-panel);
+  font-size: 0.9rem;
+  margin: 0 0 0.35rem;
+}
+
+.invoice-party-label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8b93a0;
+  margin-bottom: 0.35rem;
+}
+
+.invoice-party strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.invoice-party p {
+  margin: 0;
+  color: #444;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.invoice-meta-row {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.invoice-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+
+.invoice-items-table th {
+  text-align: left;
+  background: #f2f4f7;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.invoice-items-table th:not(:first-child),
+.invoice-items-table td:not(:first-child) {
+  text-align: right;
+}
+
+.invoice-items-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #e7eaef;
+  font-size: 0.85rem;
+}
+
+.invoice-summary-box {
+  border: 1px solid #d6dbe2;
+  border-radius: 6px;
+  width: 320px;
+  margin-left: auto;
+  overflow: hidden;
+}
+
+.invoice-summary-box h4 {
+  margin: 0;
+  background: #f2f4f7;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.invoice-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  border-top: 1px solid #e7eaef;
+}
+
+.invoice-summary-row.total {
+  font-weight: 700;
 }
 
 /* ---------- Responsive: tablet / narrow ---------- */

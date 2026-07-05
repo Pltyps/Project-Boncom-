@@ -68,8 +68,10 @@ export const api = {
     }),
 
   listClients: () => request<Client[]>("/clients"),
-  createClient: (data: { name: string; email?: string; company?: string }) =>
+  createClient: (data: { name: string; email?: string; company?: string; address?: string }) =>
     request<Client>("/clients", { method: "POST", body: JSON.stringify(data) }),
+  updateClient: (id: string, data: { name: string; email?: string; company?: string; address?: string }) =>
+    request<Client>(`/clients/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 
   listEstimates: (params?: { status?: string; clientId?: string; search?: string }) => {
     const query = new URLSearchParams();

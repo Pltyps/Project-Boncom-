@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
-import { formatCurrency, formatDateTime } from "../lib/format";
+import { formatCurrency, formatDate, formatDateTime } from "../lib/format";
 import { previewTotals } from "../lib/totals";
 import { useToast } from "../lib/toast";
 import ClientPicker from "../components/ClientPicker";
@@ -10,6 +10,14 @@ import NumericInput from "../components/NumericInput";
 import type { AdjustmentType, AuditLogEntry, Client, Estimate, EstimateStatus, LineItem } from "../types";
 
 const emptyLineItem: LineItem = { description: "", quantity: 1, rate: 0 };
+
+// Boncom's own "From" details for the printable invoice - fill in email/
+// phone here once confirmed; everything else on the invoice is derived
+// from the estimate/client data.
+const BONCOM_DETAILS = {
+  name: "Boncom",
+  addressLines: ["Triad Center", "55 N 300 W", "Salt Lake City, Utah 84101, US"],
+};
 
 export default function EstimateEditor() {
   const { id } = useParams();
@@ -26,7 +34,9 @@ export default function EstimateEditor() {
   const [taxType, setTaxType] = useState<AdjustmentType>("percent");
   const [taxValue, setTaxValue] = useState(0);
   const [notes, setNotes] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([{ ...emptyLineItem }]);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [createdByName, setCreatedByName] = useState<string | null>(null);
   const [updatedByName, setUpdatedByName] = useState<string | null>(null);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
@@ -46,7 +56,9 @@ export default function EstimateEditor() {
     setTaxType(est.taxType);
     setTaxValue(est.taxValue);
     setNotes(est.notes ?? "");
+    setDueDate(est.dueDate ?? "");
     setLineItems(est.lineItems.length ? est.lineItems : [{ ...emptyLineItem }]);
+    setCreatedAt(est.createdAt);
     setCreatedByName(est.createdByName);
     setUpdatedByName(est.updatedByName);
   }
@@ -71,6 +83,7 @@ export default function EstimateEditor() {
   // The backend recalculates the authoritative version (via decimal.js) on
   // save, so this preview only ever needs to be display-accurate.
   const totals = previewTotals(lineItems, discountType, discountValue, taxType, taxValue);
+  const selectedClient = clients.find((c) => c.id === clientId);
 
   function updateLineItem(index: number, patch: Partial<LineItem>) {
     setLineItems((prev) => prev.map((li, i) => (i === index ? { ...li, ...patch } : li)));
@@ -106,6 +119,7 @@ export default function EstimateEditor() {
       taxType,
       taxValue,
       notes,
+      dueDate,
       // Drop rows the user added but never filled in, rather than saving
       // blank line items (the backend would reject them anyway - description
       // is required - but filtering here avoids a round-trip error).
@@ -165,6 +179,30 @@ export default function EstimateEditor() {
     }
   }
 
+  // Web Share API opens the OS's native share sheet (Mail, AirDrop, Nearby
+  // Share/Quick Share, etc all show up there automatically when supported) -
+  // falls back to a clipboard copy on browsers that don't support it (e.g.
+  // desktop Firefox).
+  async function handleShare() {
+    const summary = `${title || "Estimate"} — ${selectedClient?.name ?? "Client"}\nTotal: ${formatCurrency(totals.total)}\n${window.location.href}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: title || "Estimate", text: summary, url: window.location.href });
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          showToast("Couldn't open the share sheet", "error");
+        }
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(summary);
+      showToast("Summary copied — share it via email or your device's share menu");
+    } catch {
+      showToast("Sharing isn't supported in this browser", "error");
+    }
+  }
+
   if (loading) return <p>Loading…</p>;
 
   return (
@@ -178,7 +216,10 @@ export default function EstimateEditor() {
           {!isNew && (
             <>
               <button className="btn btn-secondary" onClick={() => window.print()}>
-                Print / Share
+                Print
+              </button>
+              <button className="btn btn-secondary" onClick={handleShare}>
+                Share
               </button>
               <button className="btn btn-secondary" onClick={handleDuplicate} disabled={duplicating}>
                 {duplicating ? "Duplicating…" : "Duplicate"}
@@ -215,6 +256,7 @@ export default function EstimateEditor() {
                 selectedId={clientId}
                 onSelect={(c) => setClientId(c.id)}
                 onCreated={(c) => setClients((prev) => [...prev, c])}
+                onUpdated={(c) => setClients((prev) => prev.map((existing) => (existing.id === c.id ? c : existing)))}
               />
               <div className="field">
                 <label>Status</label>
@@ -222,6 +264,15 @@ export default function EstimateEditor() {
                   <option value="draft">Draft</option>
                   <option value="sent">Sent</option>
                 </select>
+              </div>
+              <div className="field">
+                <label>Due date (optional)</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
               </div>
             </div>
           </div>
@@ -395,6 +446,100 @@ export default function EstimateEditor() {
           </div>
         )}
       </div>
+
+      {/* Print-only invoice layout - hidden on screen (see .invoice-print-only
+          in index.css), shown exclusively inside @media print in place of the
+          interactive editor above. */}
+      {!isNew && createdAt && (
+        <div className="invoice-print-only">
+          <div className="invoice-logo-box">
+            <span className="brand-mark">B</span> {BONCOM_DETAILS.name}
+          </div>
+
+          <div className="invoice-parties">
+            <div className="invoice-party">
+              <h4>Your details</h4>
+              <span className="invoice-party-label">FROM</span>
+              <strong>{BONCOM_DETAILS.name}</strong>
+              <p>
+                {BONCOM_DETAILS.addressLines.map((line) => (
+                  <span key={line}>
+                    {line}
+                    <br />
+                  </span>
+                ))}
+              </p>
+            </div>
+            <div className="invoice-party">
+              <h4>Client's details</h4>
+              <span className="invoice-party-label">TO</span>
+              <strong>{selectedClient?.name}</strong>
+              {selectedClient?.company && <p>{selectedClient.company}</p>}
+              {selectedClient?.address && <p style={{ whiteSpace: "pre-line" }}>{selectedClient.address}</p>}
+              {selectedClient?.email && <p>{selectedClient.email}</p>}
+            </div>
+          </div>
+
+          <div className="invoice-meta-row">
+            <span>
+              <strong>Invoice No:</strong> {id?.slice(0, 8).toUpperCase()}
+            </span>
+            <span>
+              <strong>Invoice Date:</strong> {formatDate(createdAt)}
+            </span>
+            {dueDate && (
+              <span>
+                <strong>Due Date:</strong> {formatDate(dueDate)}
+              </span>
+            )}
+          </div>
+
+          <table className="invoice-items-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>HRS/QTY</th>
+                <th>Rate</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineItems.map((li, i) => (
+                <tr key={i}>
+                  <td>{li.description}</td>
+                  <td>{li.quantity}</td>
+                  <td>{formatCurrency(li.rate)}</td>
+                  <td>{formatCurrency((li.quantity || 0) * (li.rate || 0))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="invoice-summary-box">
+            <h4>Invoice Summary</h4>
+            <div className="invoice-summary-row">
+              <span>Subtotal</span>
+              <span>{formatCurrency(totals.subtotal)}</span>
+            </div>
+            {Number(totals.discountAmount) > 0 && (
+              <div className="invoice-summary-row">
+                <span>Discount</span>
+                <span>-{formatCurrency(totals.discountAmount)}</span>
+              </div>
+            )}
+            {Number(totals.taxAmount) > 0 && (
+              <div className="invoice-summary-row">
+                <span>Tax</span>
+                <span>{formatCurrency(totals.taxAmount)}</span>
+              </div>
+            )}
+            <div className="invoice-summary-row total">
+              <span>Total</span>
+              <span>{formatCurrency(totals.total)}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

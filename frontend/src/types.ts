@@ -6,6 +6,7 @@ export interface Client {
   name: string;
   email?: string | null;
   company?: string | null;
+  address?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +46,7 @@ export interface Estimate {
   taxType: AdjustmentType;
   taxValue: number;
   notes: string | null;
+  dueDate: string | null;
   createdAt: string;
   updatedAt: string;
   createdByName: string | null;
@@ -69,5 +71,6 @@ export interface EstimateDraft {
   taxType: AdjustmentType;
   taxValue: number;
   notes: string;
+  dueDate: string;
   lineItems: LineItem[];
 }
