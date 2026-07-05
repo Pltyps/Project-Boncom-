@@ -25,6 +25,16 @@ export default function GoogleSignInButton({ onCredential }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
 
+  // onCredential is a fresh function identity on every render of the parent
+  // (Login isn't memoized), so it's read via ref instead of being an effect
+  // dependency - otherwise every parent re-render (theme toggle, auth state,
+  // etc.) would re-run google.accounts.id.initialize(), which logs GSI's own
+  // "initialize() is called multiple times" warning and can leave stray
+  // partially-initialized instances behind.
+  const onCredentialRef = useRef(onCredential);
+  onCredentialRef.current = onCredential;
+  const initializedRef = useRef(false);
+
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId) return;
@@ -35,10 +45,13 @@ export default function GoogleSignInButton({ onCredential }: Props) {
     const interval = setInterval(() => {
       if (cancelled || !window.google || !containerRef.current) return;
       clearInterval(interval);
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: (resp) => onCredential(resp.credential),
-      });
+      if (!initializedRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (resp) => onCredentialRef.current(resp.credential),
+        });
+        initializedRef.current = true;
+      }
       // Google's own themed button, not our CSS, so it needs re-rendering
       // (not just recoloring) when the app switches theme - "outline" reads
       // as a light-grey button that disappears on a dark card.
@@ -53,7 +66,7 @@ export default function GoogleSignInButton({ onCredential }: Props) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [onCredential, theme]);
+  }, [theme]);
 
   return <div ref={containerRef} />;
 }

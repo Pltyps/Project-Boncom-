@@ -75,10 +75,15 @@ export function isDemoAccount(email: string): boolean {
 
 // Unset (the default) means anyone with a Google account can sign in - fine
 // for trying this out, but worth setting before treating the data as
-// actually access-controlled.
+// actually access-controlled. Entries starting with "@" match a whole email
+// domain (e.g. "@boncom.com") instead of one exact address, so the whole
+// team doesn't need to be listed one address at a time.
 export function isEmailAllowed(email: string): boolean {
   const allowlist = process.env.ALLOWED_EMAILS;
   if (!allowlist) return true;
+  const normalizedEmail = email.toLowerCase();
   const allowed = allowlist.split(",").map((e) => e.trim().toLowerCase());
-  return allowed.includes(email.toLowerCase());
+  return allowed.some((entry) =>
+    entry.startsWith("@") ? normalizedEmail.endsWith(entry) : entry === normalizedEmail
+  );
 }
