@@ -25,16 +25,16 @@ export default function Login() {
         <span className="eyebrow">
           <img src="/boncom-logo-gray.png" alt="Boncom Toolshed" className="brand-logo" />
         </span>
-        <h1>A tidier way to put a number on good work.</h1>
+        <h1>One place for Boncom's internal tools.</h1>
         <p>
-          Quoted replaces the spreadsheet: build a client estimate, get the math right the first
-          time, and know exactly who touched it and when.
+          Sign in with your Boncom Google account to get to Quoted and the other tools joining
+          the Toolshed soon.
         </p>
       </div>
       <div className="login-form-panel">
         <div className="card login-card">
           <h2>Sign in</h2>
-          <p>Use your Boncom Google account to view and manage estimates.</p>
+          <p>Use your Boncom Google account to access the Toolshed.</p>
           <div style={{ display: "flex", justifyContent: "center" }}>
             <GoogleSignInButton onCredential={handleCredential} />
           </div>

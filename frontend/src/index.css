@@ -179,11 +179,19 @@ a {
    the navy version is drawn for light backgrounds, the light-gray version
    for dark ones (the login panel is always navy, so it always gets the gray
    version regardless of the light/dark toggle). Files live in /public - drop
-   boncom-logo-navy.svg and boncom-logo-gray.svg there to replace this. */
+   boncom-logo-navy.png and boncom-logo-gray.png there to replace this. */
 .brand-logo {
-  height: 1.6rem;
+  height: 2.1rem;
   width: auto;
   display: block;
+}
+
+.top-nav .brand-logo {
+  height: 2.3rem;
+}
+
+.login-brand-panel .brand-logo {
+  height: 3rem;
 }
 
 .brand-logo-gray {
