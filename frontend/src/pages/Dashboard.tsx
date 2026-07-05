@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { formatCurrency, formatDate } from "../lib/format";
 import { useToast } from "../lib/toast";
+import { useConfirm } from "../lib/confirm";
 import type { EstimateSummary } from "../types";
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const confirm = useConfirm();
 
   // Debounce so typing a search term doesn't fire a request per keystroke.
   useEffect(() => {
@@ -115,7 +117,9 @@ export default function Dashboard() {
   async function handleDelete(id: string, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (pendingId || !confirm("Delete this estimate? This cannot be undone.")) return;
+    if (pendingId) return;
+    const ok = await confirm("Delete this estimate? This cannot be undone.", { confirmLabel: "Delete", danger: true });
+    if (!ok) return;
     setPendingId(id);
     try {
       await api.deleteEstimate(id);
@@ -131,7 +135,10 @@ export default function Dashboard() {
   return (
     <div>
       <div className="page-header">
-        <h1>Estimates</h1>
+        <div>
+          <img src="/quotd-wordmark.png" alt="Quoted" className="quotd-wordmark" />
+          <h1>Estimates</h1>
+        </div>
         <Link to="/quoted/estimates/new" className="btn btn-primary">
           + New estimate
         </Link>

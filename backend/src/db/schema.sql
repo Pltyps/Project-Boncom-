@@ -77,6 +77,11 @@ CREATE TABLE IF NOT EXISTS audit_log (
 
 CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity_type, entity_id);
 
+-- Per-field before/after values for "update" rows, so the History panel can
+-- show what actually changed rather than just "update - so-and-so".
+-- Shape: [{ "field": "Title", "oldValue": "...", "newValue": "..." }, ...]
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS changes JSONB;
+
 -- One row per person who has ever signed in. Role is set once at first
 -- sign-in (see auth.ts for the "first user ever becomes admin" bootstrap
 -- rule) and only changes after that via the admin users page - it is

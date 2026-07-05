@@ -2,8 +2,18 @@ import { Router } from "express";
 import { pool } from "../db/pool";
 import { estimateSchema } from "../validation/schemas";
 import { calculateTotals } from "../lib/totals";
-import { recordAudit } from "../lib/auditLog";
+import { recordAudit, diffFields } from "../lib/auditLog";
 import { insertLineItems, LineItemRow } from "../lib/lineItems";
+
+function formatAdjustment(type: string, value: number | string) {
+  return type === "percent" ? `${Number(value)}%` : `$${Number(value).toFixed(2)}`;
+}
+
+function formatLineItems(items: { description: string; quantity: number | string; rate: number | string }[]) {
+  return items
+    .map((li) => `${li.description || "(untitled)"} ×${Number(li.quantity)} @ $${Number(li.rate).toFixed(2)}`)
+    .join("; ");
+}
 
 export const estimatesRouter = Router();
 
@@ -148,7 +158,7 @@ estimatesRouter.get("/:id", async (req, res, next) => {
 estimatesRouter.get("/:id/audit-log", async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT action, actor_name, actor_email, created_at
+      `SELECT action, actor_name, actor_email, created_at, changes
        FROM audit_log WHERE entity_type = 'estimate' AND entity_id = $1
        ORDER BY created_at DESC`,
       [req.params.id]
@@ -159,6 +169,7 @@ estimatesRouter.get("/:id/audit-log", async (req, res, next) => {
         actorName: row.actor_name,
         actorEmail: row.actor_email,
         createdAt: row.created_at,
+        changes: row.changes ?? [],
       }))
     );
   } catch (err) {
@@ -226,6 +237,24 @@ estimatesRouter.put("/:id", async (req, res, next) => {
   try {
     await client.query("BEGIN");
 
+    const beforeResult = await client.query<EstimateRow>(`SELECT * FROM estimates WHERE id = $1 FOR UPDATE`, [
+      req.params.id,
+    ]);
+    if (beforeResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Estimate not found" });
+    }
+    const before = beforeResult.rows[0];
+    const beforeLineItems = await client.query<LineItemRow>(
+      `SELECT * FROM line_items WHERE estimate_id = $1 ORDER BY position ASC`,
+      [before.id]
+    );
+    const clientNames = await client.query<{ id: string; name: string }>(
+      `SELECT id, name FROM clients WHERE id = ANY($1::uuid[])`,
+      [[before.client_id, data.clientId]]
+    );
+    const nameById = new Map(clientNames.rows.map((r) => [r.id, r.name]));
+
     const estimateResult = await client.query<EstimateRow>(
       `UPDATE estimates SET
         client_id = $1, title = $2, status = $3,
@@ -249,11 +278,6 @@ estimatesRouter.put("/:id", async (req, res, next) => {
         req.params.id,
       ]
     );
-
-    if (estimateResult.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Estimate not found" });
-    }
     const estimate = estimateResult.rows[0];
 
     // Full replace of line items on every update keeps the editor's
@@ -261,7 +285,40 @@ estimatesRouter.put("/:id", async (req, res, next) => {
     await client.query(`DELETE FROM line_items WHERE estimate_id = $1`, [estimate.id]);
     const lineItems = await insertLineItems(client, estimate.id, data.lineItems);
 
-    await recordAudit(client, "estimate", estimate.id, "update", actor);
+    const changes = diffFields(
+      {
+        title: before.title,
+        status: before.status,
+        clientName: nameById.get(before.client_id) ?? before.client_id,
+        discount: formatAdjustment(before.discount_type, before.discount_value),
+        tax: formatAdjustment(before.tax_type, before.tax_value),
+        notes: before.notes,
+        dueDate: before.due_date,
+        lineItems: formatLineItems(beforeLineItems.rows),
+      },
+      {
+        title: data.title,
+        status: data.status,
+        clientName: nameById.get(data.clientId) ?? data.clientId,
+        discount: formatAdjustment(data.discountType, data.discountValue),
+        tax: formatAdjustment(data.taxType, data.taxValue),
+        notes: data.notes ?? null,
+        dueDate: data.dueDate ?? null,
+        lineItems: formatLineItems(data.lineItems),
+      },
+      [
+        { key: "title", label: "Title" },
+        { key: "status", label: "Status" },
+        { key: "clientName", label: "Client" },
+        { key: "discount", label: "Discount" },
+        { key: "tax", label: "Tax" },
+        { key: "notes", label: "Notes" },
+        { key: "dueDate", label: "Due date" },
+        { key: "lineItems", label: "Line items" },
+      ]
+    );
+
+    await recordAudit(client, "estimate", estimate.id, "update", actor, changes);
     await client.query("COMMIT");
     res.json(serializeEstimate(estimate, lineItems));
   } catch (err) {

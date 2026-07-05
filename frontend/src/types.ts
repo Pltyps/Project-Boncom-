@@ -55,11 +55,18 @@ export interface Estimate {
   totals: Totals;
 }
 
+export interface AuditLogChange {
+  field: string;
+  oldValue: string | null;
+  newValue: string | null;
+}
+
 export interface AuditLogEntry {
   action: "create" | "update" | "delete";
   actorName: string;
   actorEmail: string;
   createdAt: string;
+  changes: AuditLogChange[];
 }
 
 export interface EstimateDraft {

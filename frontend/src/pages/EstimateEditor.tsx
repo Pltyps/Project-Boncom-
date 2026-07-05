@@ -4,6 +4,7 @@ import { api, ApiError } from "../lib/api";
 import { formatCurrency, formatDate, formatDateTime } from "../lib/format";
 import { previewTotals } from "../lib/totals";
 import { useToast } from "../lib/toast";
+import { useConfirm } from "../lib/confirm";
 import { renderNodeToPdfBlob } from "../lib/invoicePdf";
 import ClientPicker from "../components/ClientPicker";
 import InfoTooltip from "../components/InfoTooltip";
@@ -25,6 +26,7 @@ export default function EstimateEditor() {
   const isNew = !id;
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const confirm = useConfirm();
 
   const [clients, setClients] = useState<Client[]>([]);
   const [clientId, setClientId] = useState("");
@@ -181,7 +183,9 @@ export default function EstimateEditor() {
   }
 
   async function handleDelete() {
-    if (!id || !confirm("Delete this estimate? This cannot be undone.")) return;
+    if (!id) return;
+    const ok = await confirm("Delete this estimate? This cannot be undone.", { confirmLabel: "Delete", danger: true });
+    if (!ok) return;
     try {
       await api.deleteEstimate(id);
       showToast("Estimate deleted");
@@ -491,11 +495,22 @@ export default function EstimateEditor() {
             )}
             <div className="audit-log">
               {auditLog.map((entry, i) => (
-                <div key={i} className="audit-log-row">
-                  <span>
-                    {entry.action} — {entry.actorName}
-                  </span>
-                  <span>{formatDateTime(entry.createdAt)}</span>
+                <div key={i} className="audit-log-entry">
+                  <div className="audit-log-row">
+                    <span>
+                      {entry.action} — {entry.actorName}
+                    </span>
+                    <span>{formatDateTime(entry.createdAt)}</span>
+                  </div>
+                  {entry.changes.length > 0 && (
+                    <ul className="audit-log-changes">
+                      {entry.changes.map((change, j) => (
+                        <li key={j}>
+                          <strong>{change.field}:</strong> {change.oldValue ?? "—"} → {change.newValue ?? "—"}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ))}
             </div>

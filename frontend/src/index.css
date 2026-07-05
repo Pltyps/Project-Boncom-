@@ -175,25 +175,27 @@ a {
   white-space: nowrap;
 }
 
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.6rem;
+/* Boncom's real logo lockup, swapped by theme rather than tinted with CSS -
+   the navy version is drawn for light backgrounds, the light-gray version
+   for dark ones (the login panel is always navy, so it always gets the gray
+   version regardless of the light/dark toggle). Files live in /public - drop
+   boncom-logo-navy.svg and boncom-logo-gray.svg there to replace this. */
+.brand-logo {
   height: 1.6rem;
-  border-radius: 6px;
-  background: var(--color-navy-panel);
-  color: #fff;
-  font-size: 0.85rem;
-  font-weight: 700;
-  margin-right: 0.55rem;
-  flex-shrink: 0;
-  vertical-align: middle;
+  width: auto;
+  display: block;
 }
 
-.brand-mark-inverse {
-  background: #fff;
-  color: var(--color-navy-panel);
+.brand-logo-gray {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-logo-navy {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-logo-gray {
+  display: block;
 }
 
 .nav-actions {
@@ -321,6 +323,16 @@ a {
 
 .page-header h1 {
   font-size: 1.5rem;
+}
+
+/* Quoted's own wordmark, shown above the "Estimates" heading - drop
+   quotd-wordmark.png into /public to replace the placeholder text it
+   sits above (the h1 stays for accessibility/SEO, this is decorative). */
+.quotd-wordmark {
+  display: block;
+  height: 1.4rem;
+  width: auto;
+  margin-bottom: 0.15rem;
 }
 
 .page-subtitle {
@@ -904,11 +916,37 @@ input[type="number"] {
   font-size: 0.85rem;
 }
 
+.audit-log-entry {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.audit-log-entry:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 .audit-log-row {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
   color: var(--color-text-muted);
+}
+
+.audit-log-changes {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.audit-log-changes strong {
+  color: var(--color-text);
+  font-weight: 600;
 }
 
 /* ---------- Toasts ---------- */
@@ -960,6 +998,49 @@ input[type="number"] {
     max-width: none;
     align-items: stretch;
   }
+}
+
+/* ---------- Confirm dialog ---------- */
+
+/* Centered in-app replacement for window.confirm() - the native dialog
+   can't be themed or positioned and looks foreign next to the rest of the app. */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 8, 20, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+  animation: toast-in 0.12s ease-out;
+}
+
+.confirm-dialog {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 380px;
+}
+
+.confirm-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.confirm-message {
+  margin: 0 0 1.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 /* ---------- Print ---------- */

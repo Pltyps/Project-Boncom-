@@ -36,8 +36,8 @@ function App() {
     <div className="app-shell">
       <header className="top-nav">
         <Link to="/" className="brand">
-          <span className="brand-mark">B</span>
-          Boncom Toolshed
+          <img src="/boncom-logo-navy.png" alt="Boncom Toolshed" className="brand-logo brand-logo-navy" />
+          <img src="/boncom-logo-gray.png" alt="Boncom Toolshed" className="brand-logo brand-logo-gray" />
         </Link>
         <button
           className="nav-hamburger btn-ghost"
