@@ -6,15 +6,19 @@ export default function ThemeToggle({ className = "", showLabel = false }: { cla
   const label = isDark ? "Switch to light mode" : "Switch to dark mode";
 
   return (
-    <button
-      type="button"
-      className={`btn-ghost theme-toggle ${className}`.trim()}
-      onClick={toggleTheme}
-      aria-label={label}
-      title={label}
-    >
-      {isDark ? "☀" : "☾"}
+    <span className={`theme-toggle-wrap ${className}`.trim()}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isDark}
+        className={`theme-switch ${isDark ? "dark" : ""}`}
+        onClick={toggleTheme}
+        aria-label={label}
+        title={label}
+      >
+        <span className="theme-switch-knob">{isDark ? "☾" : "☀"}</span>
+      </button>
       {showLabel && <span>{label}</span>}
-    </button>
+    </span>
   );
 }

@@ -623,9 +623,12 @@ a {
   align-items: start;
 }
 
+/* 2x2: Title/Status on top, Client/Due date below - source order in
+   EstimateEditor.tsx is Title, Status, Client, Due date so grid auto-flow
+   places them into this layout without explicit grid-area assignments. */
 .estimate-meta-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -966,6 +969,21 @@ input[type="number"] {
    form controls (which don't make sense as a client-facing document). */
 .invoice-print-only {
   display: none;
+}
+
+/* Rendered off-screen (not display:none, which html2canvas can't capture)
+   while the Share button builds a PDF from this node - fixed width so the
+   layout is consistent regardless of the viewport that triggered it. */
+.invoice-print-only.capturing {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 800px;
+  background: white;
+  color: #111;
+  font-size: 12px;
+  padding: 0.5in;
 }
 
 @media print {

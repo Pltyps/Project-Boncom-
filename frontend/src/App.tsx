@@ -30,7 +30,6 @@ function App() {
     return <Login />;
   }
 
-  const inQuoted = location.pathname.startsWith("/quoted");
   const isAdmin = roleMeets(user.role, "admin");
 
   return (
@@ -60,11 +59,6 @@ function App() {
               Users
             </Link>
           )}
-          {inQuoted && (
-            <Link to="/quoted/estimates/new" className="btn btn-primary">
-              New estimate
-            </Link>
-          )}
           <ThemeToggle />
           <button className="btn btn-secondary" onClick={logout}>
             Sign out
@@ -86,11 +80,6 @@ function App() {
         {isAdmin && (
           <Link to="/admin/users" className="btn btn-secondary">
             Users
-          </Link>
-        )}
-        {inQuoted && (
-          <Link to="/quoted/estimates/new" className="btn btn-primary">
-            New estimate
           </Link>
         )}
         <ThemeToggle className="nav-drawer-theme-toggle" showLabel />

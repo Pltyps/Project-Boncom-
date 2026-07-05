@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { formatCurrency, formatDate, formatDateTime } from "../lib/format";
 import { previewTotals } from "../lib/totals";
 import { useToast } from "../lib/toast";
+import { renderNodeToPdfBlob } from "../lib/invoicePdf";
 import ClientPicker from "../components/ClientPicker";
 import InfoTooltip from "../components/InfoTooltip";
 import NumericInput from "../components/NumericInput";
@@ -46,6 +47,9 @@ export default function EstimateEditor() {
   const [duplicating, setDuplicating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  const [sharing, setSharing] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const invoiceRef = useRef<HTMLDivElement>(null);
 
   function applyEstimate(est: Estimate) {
     setClientId(est.clientId);
@@ -67,8 +71,30 @@ export default function EstimateEditor() {
     api.listClients().then(setClients);
   }, []);
 
+  // Router reuses this same component instance across navigations between
+  // /quoted/estimates/:id and /quoted/estimates/new (no remount), so without
+  // this reset a "new" estimate would silently start out with whatever
+  // estimate was open beforehand - client, line items, totals and all.
   useEffect(() => {
-    if (isNew) return;
+    if (isNew) {
+      setClientId("");
+      setTitle("");
+      setStatus("draft");
+      setDiscountType("percent");
+      setDiscountValue(0);
+      setTaxType("percent");
+      setTaxValue(0);
+      setNotes("");
+      setDueDate("");
+      setLineItems([{ ...emptyLineItem }]);
+      setCreatedAt(null);
+      setCreatedByName(null);
+      setUpdatedByName(null);
+      setAuditLog([]);
+      setError(null);
+      setFieldErrors({});
+      return;
+    }
     setLoading(true);
     api
       .getEstimate(id!)
@@ -180,26 +206,56 @@ export default function EstimateEditor() {
   }
 
   // Web Share API opens the OS's native share sheet (Mail, AirDrop, Nearby
-  // Share/Quick Share, etc all show up there automatically when supported) -
-  // falls back to a clipboard copy on browsers that don't support it (e.g.
-  // desktop Firefox).
+  // Share/Quick Share, etc all show up there automatically when supported).
+  // Shares the invoice as an actual PDF file (rendered from the same hidden
+  // .invoice-print-only markup used for printing) so recipients get a real
+  // document, not just a text blurb. Falls back to downloading the PDF
+  // directly, then to a clipboard text copy, as support narrows.
   async function handleShare() {
-    const summary = `${title || "Estimate"} — ${selectedClient?.name ?? "Client"}\nTotal: ${formatCurrency(totals.total)}\n${window.location.href}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: title || "Estimate", text: summary, url: window.location.href });
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          showToast("Couldn't open the share sheet", "error");
-        }
-      }
-      return;
-    }
+    const summary = `${title || "Estimate"} — ${selectedClient?.name ?? "Client"}\nTotal: ${formatCurrency(totals.total)}`;
+    const filename = `${(title || "estimate").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.pdf`;
+
+    setSharing(true);
+    let file: File | null = null;
     try {
-      await navigator.clipboard.writeText(summary);
-      showToast("Summary copied — share it via email or your device's share menu");
+      if (invoiceRef.current) {
+        setCapturing(true);
+        await new Promise(requestAnimationFrame);
+        file = await renderNodeToPdfBlob(invoiceRef.current, filename);
+      }
     } catch {
-      showToast("Sharing isn't supported in this browser", "error");
+      file = null; // fall back to a text-only share below
+    } finally {
+      setCapturing(false);
+    }
+
+    try {
+      if (file && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: title || "Estimate", text: summary, files: [file] });
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({ title: title || "Estimate", text: summary, url: window.location.href });
+        return;
+      }
+      if (file) {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Invoice PDF downloaded — attach it to an email or AirDrop it yourself");
+        return;
+      }
+      await navigator.clipboard.writeText(`${summary}\n${window.location.href}`);
+      showToast("Summary copied — share it via email or your device's share menu");
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
+        showToast("Couldn't share the invoice", "error");
+      }
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -218,8 +274,8 @@ export default function EstimateEditor() {
               <button className="btn btn-secondary" onClick={() => window.print()}>
                 Print
               </button>
-              <button className="btn btn-secondary" onClick={handleShare}>
-                Share
+              <button className="btn btn-secondary" onClick={handleShare} disabled={sharing}>
+                {sharing ? "Preparing…" : "Share"}
               </button>
               <button className="btn btn-secondary" onClick={handleDuplicate} disabled={duplicating}>
                 {duplicating ? "Duplicating…" : "Duplicate"}
@@ -251,13 +307,6 @@ export default function EstimateEditor() {
                 />
                 {fieldErrors.title && <span className="field-error">{fieldErrors.title[0]}</span>}
               </div>
-              <ClientPicker
-                clients={clients}
-                selectedId={clientId}
-                onSelect={(c) => setClientId(c.id)}
-                onCreated={(c) => setClients((prev) => [...prev, c])}
-                onUpdated={(c) => setClients((prev) => prev.map((existing) => (existing.id === c.id ? c : existing)))}
-              />
               <div className="field">
                 <label>Status</label>
                 <select className="select" value={status} onChange={(e) => setStatus(e.target.value as EstimateStatus)}>
@@ -265,6 +314,13 @@ export default function EstimateEditor() {
                   <option value="sent">Sent</option>
                 </select>
               </div>
+              <ClientPicker
+                clients={clients}
+                selectedId={clientId}
+                onSelect={(c) => setClientId(c.id)}
+                onCreated={(c) => setClients((prev) => [...prev, c])}
+                onUpdated={(c) => setClients((prev) => prev.map((existing) => (existing.id === c.id ? c : existing)))}
+              />
               <div className="field">
                 <label>Due date (optional)</label>
                 <input
@@ -449,9 +505,10 @@ export default function EstimateEditor() {
 
       {/* Print-only invoice layout - hidden on screen (see .invoice-print-only
           in index.css), shown exclusively inside @media print in place of the
-          interactive editor above. */}
+          interactive editor above. Also used (via invoiceRef, off-screen -
+          see .capturing) as the source node for the Share button's PDF. */}
       {!isNew && createdAt && (
-        <div className="invoice-print-only">
+        <div ref={invoiceRef} className={`invoice-print-only ${capturing ? "capturing" : ""}`}>
           <div className="invoice-logo-box">
             <span className="brand-mark">B</span> {BONCOM_DETAILS.name}
           </div>
