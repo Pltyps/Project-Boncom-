@@ -4,13 +4,13 @@
   "description": "Quoted API - cost estimate management",
   "license": "MIT",
   "type": "commonjs",
-  "main": "dist/server.js",
+  "main": "src/server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json && cp src/db/schema.sql dist/db/schema.sql",
-    "start": "node dist/server.js",
-    "migrate": "tsx src/db/migrate.ts",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc -p tsconfig.json",
+    "start": "node src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
