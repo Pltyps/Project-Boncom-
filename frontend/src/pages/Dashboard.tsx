@@ -2,16 +2,17 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { formatCurrency, formatDate } from "../lib/format";
+import { useToast } from "../lib/toast";
 import type { EstimateSummary } from "../types";
 
 export default function Dashboard() {
   const [estimates, setEstimates] = useState<EstimateSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   // Debounce so typing a search term doesn't fire a request per keystroke.
   useEffect(() => {
@@ -20,7 +21,7 @@ export default function Dashboard() {
       api
         .listEstimates({ search: search || undefined, status: status || undefined })
         .then(setEstimates)
-        .catch((err) => setError(err.message))
+        .catch((err) => showToast(err.message, "error"))
         .finally(() => setLoading(false));
     }, 250);
     return () => clearTimeout(timeout);
@@ -35,12 +36,12 @@ export default function Dashboard() {
     e.stopPropagation();
     if (pendingId) return;
     setPendingId(id);
-    setError(null);
     try {
       const copy = await api.duplicateEstimate(id);
+      showToast("Estimate duplicated");
       navigate(`/quoted/estimates/${copy.id}`);
     } catch (err) {
-      setError((err as Error).message);
+      showToast((err as Error).message, "error");
       setPendingId(null);
     }
   }
@@ -50,12 +51,12 @@ export default function Dashboard() {
     e.stopPropagation();
     if (pendingId || !confirm("Delete this estimate? This cannot be undone.")) return;
     setPendingId(id);
-    setError(null);
     try {
       await api.deleteEstimate(id);
+      showToast("Estimate deleted");
       setEstimates((prev) => prev.filter((est) => est.id !== id));
     } catch (err) {
-      setError((err as Error).message);
+      showToast((err as Error).message, "error");
     } finally {
       setPendingId(null);
     }
@@ -81,8 +82,6 @@ export default function Dashboard() {
           <option value="sent">Sent</option>
         </select>
       </div>
-
-      {error && <p className="field-error">{error}</p>}
 
       <div className="card">
         {loading && estimates.length === 0 ? (

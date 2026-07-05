@@ -3,6 +3,7 @@ import { pool } from "../db/pool";
 import { estimateSchema } from "../validation/schemas";
 import { calculateTotals } from "../lib/totals";
 import { recordAudit } from "../lib/auditLog";
+import { insertLineItems, LineItemRow } from "../lib/lineItems";
 
 export const estimatesRouter = Router();
 
@@ -20,15 +21,6 @@ interface EstimateRow {
   updated_at: string;
   created_by_name: string | null;
   updated_by_name: string | null;
-}
-
-interface LineItemRow {
-  id: string;
-  estimate_id: string;
-  description: string;
-  quantity: string;
-  rate: string;
-  position: number;
 }
 
 // Shapes a DB row + its line items into the camelCase JSON the frontend
@@ -206,17 +198,7 @@ estimatesRouter.post("/", async (req, res, next) => {
       ]
     );
     const estimate = estimateResult.rows[0];
-
-    const lineItems: LineItemRow[] = [];
-    for (let i = 0; i < data.lineItems.length; i++) {
-      const li = data.lineItems[i];
-      const liResult = await client.query<LineItemRow>(
-        `INSERT INTO line_items (estimate_id, description, quantity, rate, position)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [estimate.id, li.description, li.quantity, li.rate, i]
-      );
-      lineItems.push(liResult.rows[0]);
-    }
+    const lineItems = await insertLineItems(client, estimate.id, data.lineItems);
 
     await recordAudit(client, "estimate", estimate.id, "create", actor);
     await client.query("COMMIT");
@@ -273,17 +255,7 @@ estimatesRouter.put("/:id", async (req, res, next) => {
     // Full replace of line items on every update keeps the editor's
     // "array of rows" model in sync with the DB without diffing.
     await client.query(`DELETE FROM line_items WHERE estimate_id = $1`, [estimate.id]);
-
-    const lineItems: LineItemRow[] = [];
-    for (let i = 0; i < data.lineItems.length; i++) {
-      const li = data.lineItems[i];
-      const liResult = await client.query<LineItemRow>(
-        `INSERT INTO line_items (estimate_id, description, quantity, rate, position)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [estimate.id, li.description, li.quantity, li.rate, i]
-      );
-      lineItems.push(liResult.rows[0]);
-    }
+    const lineItems = await insertLineItems(client, estimate.id, data.lineItems);
 
     await recordAudit(client, "estimate", estimate.id, "update", actor);
     await client.query("COMMIT");
@@ -352,16 +324,15 @@ estimatesRouter.post("/:id/duplicate", async (req, res, next) => {
       ]
     );
     const newEstimate = newEstimateResult.rows[0];
-
-    const newLineItems: LineItemRow[] = [];
-    for (const li of sourceLineItems.rows) {
-      const liResult = await client.query<LineItemRow>(
-        `INSERT INTO line_items (estimate_id, description, quantity, rate, position)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [newEstimate.id, li.description, li.quantity, li.rate, li.position]
-      );
-      newLineItems.push(liResult.rows[0]);
-    }
+    const newLineItems = await insertLineItems(
+      client,
+      newEstimate.id,
+      sourceLineItems.rows.map((li) => ({
+        description: li.description,
+        quantity: Number(li.quantity),
+        rate: Number(li.rate),
+      }))
+    );
 
     await recordAudit(client, "estimate", newEstimate.id, "create", actor);
     await client.query("COMMIT");

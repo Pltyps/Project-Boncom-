@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
-import { formatCurrency, formatDate } from "../lib/format";
+import { formatCurrency, formatDateTime } from "../lib/format";
 import { previewTotals } from "../lib/totals";
+import { useToast } from "../lib/toast";
 import ClientPicker from "../components/ClientPicker";
 import InfoTooltip from "../components/InfoTooltip";
-import type { AdjustmentType, AuditLogEntry, Client, EstimateStatus, LineItem } from "../types";
+import type { AdjustmentType, AuditLogEntry, Client, Estimate, EstimateStatus, LineItem } from "../types";
 
 const emptyLineItem: LineItem = { description: "", quantity: 1, rate: 0 };
 
@@ -13,6 +14,7 @@ export default function EstimateEditor() {
   const { id } = useParams();
   const isNew = !id;
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [clients, setClients] = useState<Client[]>([]);
   const [clientId, setClientId] = useState("");
@@ -30,8 +32,23 @@ export default function EstimateEditor() {
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  function applyEstimate(est: Estimate) {
+    setClientId(est.clientId);
+    setTitle(est.title);
+    setStatus(est.status);
+    setDiscountType(est.discountType);
+    setDiscountValue(est.discountValue);
+    setTaxType(est.taxType);
+    setTaxValue(est.taxValue);
+    setNotes(est.notes ?? "");
+    setLineItems(est.lineItems.length ? est.lineItems : [{ ...emptyLineItem }]);
+    setCreatedByName(est.createdByName);
+    setUpdatedByName(est.updatedByName);
+  }
 
   useEffect(() => {
     api.listClients().then(setClients);
@@ -42,19 +59,7 @@ export default function EstimateEditor() {
     setLoading(true);
     api
       .getEstimate(id!)
-      .then((est) => {
-        setClientId(est.clientId);
-        setTitle(est.title);
-        setStatus(est.status);
-        setDiscountType(est.discountType);
-        setDiscountValue(est.discountValue);
-        setTaxType(est.taxType);
-        setTaxValue(est.taxValue);
-        setNotes(est.notes ?? "");
-        setLineItems(est.lineItems.length ? est.lineItems : [{ ...emptyLineItem }]);
-        setCreatedByName(est.createdByName);
-        setUpdatedByName(est.updatedByName);
-      })
+      .then(applyEstimate)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
     api.getAuditLog(id!).then(setAuditLog);
@@ -107,13 +112,27 @@ export default function EstimateEditor() {
     };
 
     try {
-      const saved = isNew ? await api.createEstimate(payload) : await api.updateEstimate(id!, payload);
-      navigate(`/quoted/estimates/${saved.id}`, { replace: true });
+      if (isNew) {
+        const saved = await api.createEstimate(payload);
+        showToast("Estimate created");
+        navigate(`/quoted/estimates/${saved.id}`, { replace: true });
+      } else {
+        // Editing an estimate keeps the same URL, so navigating (even with
+        // replace) wouldn't remount this page or re-run the fetch effect -
+        // apply the response directly instead of relying on a route change.
+        const saved = await api.updateEstimate(id!, payload);
+        applyEstimate(saved);
+        api.getAuditLog(id!).then(setAuditLog);
+        showToast("Estimate saved");
+      }
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors) {
         setFieldErrors(err.fieldErrors);
+        showToast("Please fix the highlighted fields.", "error");
       } else {
-        setError((err as Error).message);
+        const message = (err as Error).message;
+        setError(message);
+        showToast(message, "error");
       }
     } finally {
       setSaving(false);
@@ -122,20 +141,36 @@ export default function EstimateEditor() {
 
   async function handleDelete() {
     if (!id || !confirm("Delete this estimate? This cannot be undone.")) return;
-    await api.deleteEstimate(id);
-    navigate("/quoted");
+    try {
+      await api.deleteEstimate(id);
+      showToast("Estimate deleted");
+      navigate("/quoted");
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    }
   }
 
   async function handleDuplicate() {
-    if (!id) return;
-    const copy = await api.duplicateEstimate(id);
-    navigate(`/quoted/estimates/${copy.id}`);
+    if (!id || duplicating) return;
+    setDuplicating(true);
+    try {
+      const copy = await api.duplicateEstimate(id);
+      showToast("Estimate duplicated");
+      navigate(`/quoted/estimates/${copy.id}`);
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    } finally {
+      setDuplicating(false);
+    }
   }
 
   if (loading) return <p>Loading…</p>;
 
   return (
     <div>
+      <Link to="/quoted" className="btn-ghost" style={{ display: "inline-block", marginBottom: "0.75rem" }}>
+        ← Back to estimates
+      </Link>
       <div className="page-header">
         <h1>{isNew ? "New estimate" : title || "Estimate"}</h1>
         <div className="toolbar" style={{ margin: 0 }}>
@@ -144,8 +179,8 @@ export default function EstimateEditor() {
               <button className="btn btn-secondary" onClick={() => window.print()}>
                 Print / Share
               </button>
-              <button className="btn btn-secondary" onClick={handleDuplicate}>
-                Duplicate
+              <button className="btn btn-secondary" onClick={handleDuplicate} disabled={duplicating}>
+                {duplicating ? "Duplicating…" : "Duplicate"}
               </button>
               <button className="btn btn-danger" onClick={handleDelete}>
                 Delete
@@ -351,7 +386,7 @@ export default function EstimateEditor() {
                   <span>
                     {entry.action} — {entry.actorName}
                   </span>
-                  <span>{formatDate(entry.createdAt)}</span>
+                  <span>{formatDateTime(entry.createdAt)}</span>
                 </div>
               ))}
             </div>

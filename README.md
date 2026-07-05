@@ -79,6 +79,29 @@ Both frontend and backend deploy to Vercel as separate projects.
   `/quoted/estimates/:id` doesn't 404.
 - Add both deployed URLs as authorized JavaScript origins on the Google OAuth Client.
 
+## Capacity and known limitations
+
+Designed with an expected ceiling of roughly 200 concurrent users. What that does and doesn't
+cover, honestly:
+
+- **Vercel serverless functions** scale horizontally on their own — more concurrent requests just
+  means more function instances. This isn't a real constraint at this scale on any tier.
+- **The real ceiling is Neon's free-tier compute.** It runs on a small shared vCPU and
+  **auto-suspends after ~5 minutes idle** — the first request after a quiet period pays a cold-start
+  penalty (roughly a second or two) while it wakes back up. There's also a monthly compute-hour
+  budget; sustained heavy usage could exhaust it before the billing period resets.
+- The connection pool (`backend/src/db/pool.ts`) is deliberately capped at 1 connection per
+  serverless instance — Neon's pooled endpoint (PgBouncer) is what's meant to absorb concurrency
+  across many instances, not a large pool held by any single one. Line-item writes were batched
+  into a single multi-row `INSERT` per estimate (previously one round-trip per line item) so each
+  request holds its one connection for as little time as possible - the only place in this app that
+  was worth optimizing at the code level for this.
+- No application-level rate limiting. Not a priority at 200 known, presumably-legitimate users; would
+  matter more if this were ever exposed beyond an authenticated internal tool.
+- **If 200 concurrent becomes a sustained real number rather than a target ceiling**, the fix is a
+  Neon paid tier (dedicated compute, no auto-suspend, higher connection ceiling) — an infrastructure
+  cost decision, not a code change.
+
 ## What's built vs. skipped
 
 Built: everything in the brief's "Must" tier, plus most of the "Should" tier (reusable client
