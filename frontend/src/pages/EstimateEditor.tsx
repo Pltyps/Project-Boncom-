@@ -502,7 +502,7 @@ export default function EstimateEditor() {
                     </span>
                     <span>{formatDateTime(entry.createdAt)}</span>
                   </div>
-                  {entry.changes.length > 0 && (
+                  {entry.changes && entry.changes.length > 0 && (
                     <ul className="audit-log-changes">
                       {entry.changes.map((change, j) => (
                         <li key={j}>
