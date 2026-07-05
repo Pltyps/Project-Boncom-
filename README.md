@@ -1,119 +1,182 @@
 # Boncom Toolshed
 
-A small internal tools launcher, built for Boncom's take-home exercise. The first (and currently
-only working) tool is **Quot:D** — replaces a spreadsheet workflow for client cost estimates where
-line items got copied by hand and tax math got rechecked every time. Other tiles on the home
-screen are placeholders for future internal tools.
+## App Summary
 
-## What Quot:D does
+Boncom Toolshed is a web application that replaces a spreadsheet-based workflow for building
+client cost estimates. The problem it solves is that staff shouldn't have to hand-copy line items
+between quotes and manually recheck discount/tax math every time a number changes. The primary
+user is a Boncom employee who signs in with their Google account and needs to create, edit, or
+print a cost estimate for a client. A user signs in, picks or creates a client, builds an estimate
+out of line items, applies a discount and a tax rate, and gets a clean printable/shareable view —
+every change is attributed to the signed-in user and recorded in an append-only audit log. The
+toolshed itself is designed to hold more than one internal tool: **Quot:D** (the estimate builder)
+is the first and currently only working one; other tiles on the home dashboard are placeholders
+for tools still to come. Role-based access (`user` / `dev` / `admin`) and an optional email
+allowlist mean the app can be handed to a small, specific team rather than being an open URL.
 
-- Create an estimate for a client, add line items (description, qty, rate), and watch the totals
-  update as you type.
-- Apply a discount and a tax rate, each as either a flat amount or a percentage. Discount is
-  applied to the subtotal first, then tax is calculated on what's left — so a client never gets
-  taxed on money they didn't end up owing. Each figure has an info tooltip showing the actual
-  formula and numbers used.
-- Mark an estimate draft or sent, and come back to it later from the dashboard.
-- Search and filter past estimates by client name, title, or status.
-- Duplicate an estimate to reuse as a starting point for a new one.
-- Print or share a clean, read-only view of an estimate.
-- Every create/update/delete is attributed to the signed-in user and recorded in an append-only
-  audit log, visible per-estimate in the editor.
+## Tech Stack
 
-## Access model
+- **Frontend:** React 19 + TypeScript on Vite 8, React Router, no CSS framework — a small
+  hand-written design system (`frontend/src/index.css`) keeps the bundle light
+- **Frontend tooling:** npm for dependency management, `oxlint` for linting
+- **Backend:** Node.js with Express 4 and TypeScript (CommonJS), no ORM — hand-written
+  parameterized SQL via the `pg` driver
+- **Database:** PostgreSQL (Neon in production), accessed through the `pg` driver; money fields
+  are `NUMERIC` and totals math runs through `decimal.js` so rounding never drifts
+- **Authentication:** Google Identity Services on the frontend (plain script tag, no SDK
+  dependency) hands back a Google ID token; the backend verifies it with `google-auth-library`
+  against its own Client ID and issues a signed session token via `jsonwebtoken`
+- **Validation:** `zod` schemas on every write endpoint
+- **PDF/print export:** `html2canvas` + `jspdf` on the frontend for the printable estimate view
+- **Deployment:** two separate Vercel projects from one GitHub repo — `backend/` as a single
+  Vercel serverless function (`backend/api/index.ts` wrapping the Express app, routed by
+  `backend/vercel.json`), `frontend/` as a static Vite build with SPA rewrites
 
-Sign-in is Google OAuth only — no separate account system. Three roles: **user**, **dev**,
-**admin**. The first person ever to sign in becomes admin automatically (so there's always someone
-who can grant access without a manual DB edit); everyone after that starts as `user`. Admins manage
-roles from the Users page. Each toolshed app has a `min_role` — Quot:D is open to everyone signed
-in; a future app could be restricted to `dev`/`admin` by raising that one column, no code change.
-An optional `ALLOWED_EMAILS` env var can restrict sign-in to a specific list entirely.
+## Architecture Diagram
 
-## Stack and why
-
-- **Frontend:** React + TypeScript on Vite. No CSS framework — a small hand-written design system
-  (`frontend/src/index.css`) keeps the bundle light and the look consistent.
-- **Backend:** Node + Express + TypeScript, talking to Postgres through the `pg` driver directly.
-  No ORM — the queries are simple enough that an ORM would add a layer of indirection without
-  buying much, and hand-written parameterized SQL is easy to audit for injection risk. Deployed as
-  a single Vercel serverless function wrapping the Express app, rather than Render — Render's free
-  tier sleeps after inactivity (30-60s cold start on the next request); Vercel functions don't hold
-  a persistent process to sleep.
-- **Database:** Postgres (Neon in production — real free tier, wire-compatible with any Postgres).
-  Money fields are `NUMERIC`, not `FLOAT` — totals math runs through `decimal.js` on the backend so
-  rounding never drifts.
-- **Auth:** Google Identity Services on the frontend (a plain script tag, no SDK dependency) hands
-  back a Google ID token; the backend verifies it against our Client ID and issues its own signed
-  session JWT, so the frontend isn't re-running the Google flow on every request.
-
-## Running it locally
-
-You'll need Node 22+, a Postgres instance (local or Neon), and a Google Cloud OAuth Client ID
-(Web application type; add `http://localhost:5173` as an authorized JavaScript origin).
-
-```bash
-# Backend
-cd backend
-cp .env.example .env        # fill in DATABASE_URL, GOOGLE_CLIENT_ID, SESSION_SECRET
-npm install
-npm run migrate             # creates all tables, seeds the apps registry
-npm run dev                 # http://localhost:4000
-
-# Frontend, in a second terminal
-cd frontend
-cp .env.example .env        # fill in VITE_GOOGLE_CLIENT_ID
-npm install
-npm run dev                 # http://localhost:5173
 ```
+[ Browser ]
+   │  Google Identity Services (ID token)
+   ▼
+[ Frontend — React/Vite, Vercel static ]
+   │  fetch, Bearer <session JWT>
+   ▼
+[ Backend — Express, Vercel serverless function ]
+   │  parameterized SQL (pg)
+   ▼
+[ PostgreSQL — Neon ]
+```
+
+## Prerequisites
+
+Install the following before running the project locally:
+
+- **Node.js 22+ and npm**
+  Official install guide: https://nodejs.org/en/download
+  Verify:
+  ```
+  node --version
+  npm --version
+  ```
+- **PostgreSQL** (local instance, or a free Neon project — wire-compatible with any Postgres)
+  Official install guide: https://www.postgresql.org/download/
+  Neon: https://neon.tech
+- **A Google Cloud OAuth 2.0 Client ID** (Web application type)
+  Official docs: https://developers.google.com/identity/gsi/web/guides/overview
+
+## Installation and Setup
+
+1. Clone the repository and move into it.
+   ```
+   git clone https://github.com/Pltyps/Project-Boncom-.git
+   cd Project-Boncom-
+   ```
+2. Install backend dependencies.
+   ```
+   cd backend
+   npm install
+   ```
+3. Install frontend dependencies.
+   ```
+   cd ../frontend
+   npm install
+   ```
+4. Create a Postgres database for the app (local example):
+   ```
+   createdb boncom_toolshed
+   ```
+   Or create a free database on [Neon](https://neon.tech) and copy its connection string.
+5. Create `backend/.env` from `backend/.env.example` and fill in real values:
+   ```
+   DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+   PORT=4000
+   CORS_ORIGIN=http://localhost:5173
+   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   SESSION_SECRET=any-long-random-string
+   ALLOWED_EMAILS=you@example.com,@yourcompany.com
+   ```
+6. Run the schema/migration script — this creates every table (idempotent, safe to re-run) and
+   seeds the app registry. No separate `seed.sql`; the first user to sign in becomes `admin`
+   automatically, everyone after that starts as `user`.
+   ```
+   cd ../backend
+   npm run migrate
+   ```
+7. Create `frontend/.env` from `frontend/.env.example`:
+   ```
+   VITE_API_URL=http://localhost:4000/api
+   VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   ```
+8. Configure Google OAuth. On the Web Application OAuth Client, add:
+   ```
+   Authorized JavaScript origin: http://localhost:5173
+   ```
+9. If deploying to Vercel, `backend/vercel.json` and `frontend/vercel.json` are already set up as
+   two independent projects — see **Deploying** below.
+
+## Running the Application
+
+The frontend and backend run as two separate processes locally (each has its own dev server).
+
+1. Start the backend:
+   ```
+   cd backend
+   npm run dev          # http://localhost:4000
+   ```
+2. In a second terminal, start the frontend:
+   ```
+   cd frontend
+   npm run dev          # http://localhost:5173
+   ```
+3. Open the app in your browser at:
+   ```
+   http://localhost:5173
+   ```
+4. Sign in with Google, open **Quot:D** from the home dashboard, and create a client and an
+   estimate.
+
+## Verifying the Vertical Slice
+
+1. Start both servers locally and open `http://localhost:5173`.
+2. Sign in with Google.
+3. From the Quot:D dashboard, create a client, then create a new estimate for that client.
+4. Add a few line items (description, quantity, rate), set a discount and a tax rate, and confirm
+   the totals update live.
+5. Save the estimate as a draft.
+6. Confirm the write in Postgres:
+   ```sql
+   SELECT id, title, status, client_id FROM estimates ORDER BY created_at DESC LIMIT 5;
+   SELECT id, description, quantity, rate FROM line_items ORDER BY position LIMIT 10;
+   SELECT entity_type, action, actor_email FROM audit_log ORDER BY created_at DESC LIMIT 5;
+   ```
+7. Refresh the browser or navigate back to the dashboard, then reopen the same estimate.
+8. Confirm the line items, totals, and audit history still render after reload — showing the data
+   persisted to PostgreSQL rather than only living in browser/React state.
 
 ## Deploying
 
-Both frontend and backend deploy to Vercel as separate projects.
+Both frontend and backend deploy to Vercel as **separate projects** from the same repo.
 
-- **Backend:** root directory `backend/`. `backend/api/index.ts` + `backend/vercel.json`'s
-  catch-all rewrite route every request to that one function. Env vars: `DATABASE_URL`,
-  `CORS_ORIGIN` (your frontend's URL), `GOOGLE_CLIENT_ID`, `SESSION_SECRET`, optionally
-  `ALLOWED_EMAILS`.
-- **Frontend:** root directory `frontend/`. Env vars: `VITE_API_URL` (backend URL + `/api`),
-  `VITE_GOOGLE_CLIENT_ID`. `frontend/vercel.json` handles SPA routing so refreshing on
-  `/quoted/estimates/:id` doesn't 404.
-- Add both deployed URLs as authorized JavaScript origins on the Google OAuth Client.
+- **Backend:** Root Directory must be set to `backend` (not `./`) in Project Settings — this repo
+  has no root-level `package.json`. Env vars: `DATABASE_URL`, `CORS_ORIGIN` (the frontend's deployed
+  URL), `GOOGLE_CLIENT_ID`, `SESSION_SECRET`, optionally `ALLOWED_EMAILS`.
+- **Frontend:** Root Directory `frontend`. Env vars: `VITE_API_URL` (backend URL + `/api`),
+  `VITE_GOOGLE_CLIENT_ID`.
+- Add both deployed URLs as Authorized JavaScript origins on the Google OAuth Client.
 
-## Capacity and known limitations
+## Live Version
 
-Designed with an expected ceiling of roughly 200 concurrent users. What that does and doesn't
-cover, honestly:
+- Frontend: https://frontend-phi-lemon-83.vercel.app
+- Backend API: https://backend-opal-three-58.vercel.app
 
-- **Vercel serverless functions** scale horizontally on their own — more concurrent requests just
-  means more function instances. This isn't a real constraint at this scale on any tier.
-- **The real ceiling is Neon's free-tier compute.** It runs on a small shared vCPU and
-  **auto-suspends after ~5 minutes idle** — the first request after a quiet period pays a cold-start
-  penalty (roughly a second or two) while it wakes back up. There's also a monthly compute-hour
-  budget; sustained heavy usage could exhaust it before the billing period resets.
-- The connection pool (`backend/src/db/pool.ts`) is deliberately capped at 1 connection per
-  serverless instance — Neon's pooled endpoint (PgBouncer) is what's meant to absorb concurrency
-  across many instances, not a large pool held by any single one. Line-item writes were batched
-  into a single multi-row `INSERT` per estimate (previously one round-trip per line item) so each
-  request holds its one connection for as little time as possible - the only place in this app that
-  was worth optimizing at the code level for this.
-- No application-level rate limiting. Not a priority at 200 known, presumably-legitimate users; would
-  matter more if this were ever exposed beyond an authenticated internal tool.
-- **If 200 concurrent becomes a sustained real number rather than a target ceiling**, the fix is a
-  Neon paid tier (dedicated compute, no auto-suspend, higher connection ceiling) — an infrastructure
-  cost decision, not a code change.
+## Notes
 
-## What's built vs. skipped
-
-Built: everything in the brief's "Must" tier, plus most of the "Should" tier (reusable client
-list, duplicate-as-template, search/filter, printable view), plus Google OAuth + role-based access
-control + an audit trail — further than the brief asked for, added once the app needed to hold
-real client data behind something more than an open URL. Skipped: per-app fine-grained grants
-(currently role-based only, not per-user-per-app), per-line-item tax overrides, dark mode.
-
-## With more time
-
-Line-item drag-to-reorder, a proper "sent" email flow instead of just a status flag, per-user-per-
-app access grants (independent of role) for when the toolshed has more than one working tool, and
-a tax-rate reference table by jurisdiction (looked into pulling this from official government
-sources — there's no single authoritative free API across jurisdictions, so it'd need to be a
-maintained reference dataset with cited sources rather than a live feed).
+- `backend/src/db/migrate.ts` re-runs the entire `schema.sql` file on every deploy; every
+  statement in it uses `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`, so it's safe to
+  run repeatedly without a separate migration-tracking table.
+- The backend is a single Vercel serverless function (`backend/api/index.ts` wrapping the whole
+  Express app) rather than one function per route — simpler to reason about, and the connection
+  pool is capped at 1 per instance since Neon's pooled endpoint handles concurrency across
+  instances.
+- `ALLOWED_EMAILS` supports both exact addresses and whole-domain entries (e.g. `@boncom.com`), so
+  a company-wide allowlist doesn't need every address listed individually.
