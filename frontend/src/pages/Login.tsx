@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/authContext";
 import GoogleSignInButton from "../components/GoogleSignInButton";
+import ThemeToggle from "../components/ThemeToggle";
 
 export default function Login() {
   const { login } = useAuth();
@@ -18,20 +19,29 @@ export default function Login() {
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-      <div className="card" style={{ padding: "2.5rem", textAlign: "center", maxWidth: 360 }}>
-        <h1 style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>Quoted</h1>
-        <p style={{ color: "var(--color-text-muted)", marginBottom: "1.5rem" }}>
-          Sign in to view and manage estimates.
+    <div className="login-shell">
+      <ThemeToggle className="login-theme-toggle" />
+      <div className="login-brand-panel">
+        <span className="eyebrow">Boncom Toolshed</span>
+        <h1>A tidier way to put a number on good work.</h1>
+        <p>
+          Quoted replaces the spreadsheet: build a client estimate, get the math right the first
+          time, and know exactly who touched it and when.
         </p>
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <GoogleSignInButton onCredential={handleCredential} />
+      </div>
+      <div className="login-form-panel">
+        <div className="card login-card">
+          <h2>Sign in</h2>
+          <p>Use your Boncom Google account to view and manage estimates.</p>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <GoogleSignInButton onCredential={handleCredential} />
+          </div>
+          {error && (
+            <p className="field-error" style={{ marginTop: "1rem" }}>
+              {error}
+            </p>
+          )}
         </div>
-        {error && (
-          <p className="field-error" style={{ marginTop: "1rem" }}>
-            {error}
-          </p>
-        )}
       </div>
     </div>
   );

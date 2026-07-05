@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTheme } from "../lib/theme";
 
 declare global {
   interface Window {
@@ -22,6 +23,7 @@ interface Props {
 // a single sign-in button.
 export default function GoogleSignInButton({ onCredential }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -37,8 +39,12 @@ export default function GoogleSignInButton({ onCredential }: Props) {
         client_id: clientId,
         callback: (resp) => onCredential(resp.credential),
       });
+      // Google's own themed button, not our CSS, so it needs re-rendering
+      // (not just recoloring) when the app switches theme - "outline" reads
+      // as a light-grey button that disappears on a dark card.
+      containerRef.current.replaceChildren();
       window.google.accounts.id.renderButton(containerRef.current, {
-        theme: "outline",
+        theme: theme === "dark" ? "filled_black" : "outline",
         size: "large",
       });
     }, 100);
@@ -47,7 +53,7 @@ export default function GoogleSignInButton({ onCredential }: Props) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [onCredential]);
+  }, [onCredential, theme]);
 
   return <div ref={containerRef} />;
 }

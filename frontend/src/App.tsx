@@ -5,6 +5,7 @@ import EstimateEditor from "./pages/EstimateEditor";
 import AdminUsers from "./pages/AdminUsers";
 import Login from "./pages/Login";
 import { roleMeets, useAuth } from "./lib/authContext";
+import ThemeToggle from "./components/ThemeToggle";
 
 function App() {
   const { user, logout } = useAuth();
@@ -23,9 +24,12 @@ function App() {
         <Link to="/" className="brand">
           Boncom Toolshed
         </Link>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <span style={{ color: "var(--color-text-muted)", fontSize: "0.9rem" }}>
-            {user.name} ({user.role})
+        <div className="nav-actions">
+          <span className="nav-user">
+            {user.name}
+            <span className="role-badge-label">&nbsp;(</span>
+            <span className="role-badge">{user.role}</span>
+            <span className="role-badge-label">)</span>
           </span>
           {isAdmin && (
             <Link to="/admin/users" className="btn btn-secondary">
@@ -37,6 +41,7 @@ function App() {
               New estimate
             </Link>
           )}
+          <ThemeToggle />
           <button className="btn btn-secondary" onClick={logout}>
             Sign out
           </button>

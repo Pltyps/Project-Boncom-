@@ -6,6 +6,7 @@ import { previewTotals } from "../lib/totals";
 import { useToast } from "../lib/toast";
 import ClientPicker from "../components/ClientPicker";
 import InfoTooltip from "../components/InfoTooltip";
+import NumericInput from "../components/NumericInput";
 import type { AdjustmentType, AuditLogEntry, Client, Estimate, EstimateStatus, LineItem } from "../types";
 
 const emptyLineItem: LineItem = { description: "", quantity: 1, rate: 0 };
@@ -248,23 +249,26 @@ export default function EstimateEditor() {
                       />
                     </td>
                     <td>
-                      <input
-                        type="number"
+                      <span className="row-label">Qty</span>
+                      <NumericInput
                         min={0}
-                        step="0.01"
                         value={li.quantity}
-                        onChange={(e) => updateLineItem(i, { quantity: Number(e.target.value) })}
+                        onChange={(quantity) => updateLineItem(i, { quantity })}
+                        aria-label="Quantity"
                       />
                     </td>
                     <td>
-                      <input
-                        type="number"
-                        step="0.01"
+                      <span className="row-label">Rate</span>
+                      <NumericInput
                         value={li.rate}
-                        onChange={(e) => updateLineItem(i, { rate: Number(e.target.value) })}
+                        onChange={(rate) => updateLineItem(i, { rate })}
+                        aria-label="Rate"
                       />
                     </td>
-                    <td className="line-item-amount">{formatCurrency((li.quantity || 0) * (li.rate || 0))}</td>
+                    <td className="line-item-amount">
+                      <span className="row-label">Amount</span>
+                      {formatCurrency((li.quantity || 0) * (li.rate || 0))}
+                    </td>
                     <td>
                       <button className="btn-ghost" onClick={() => removeLineItem(i)} title="Remove line">
                         ✕
@@ -305,13 +309,12 @@ export default function EstimateEditor() {
               />
             </label>
             <div className="adjustment-row">
-              <input
-                type="number"
+              <NumericInput
                 className="input"
                 min={0}
-                step="0.01"
                 value={discountValue}
-                onChange={(e) => setDiscountValue(Number(e.target.value))}
+                onChange={setDiscountValue}
+                aria-label="Discount value"
               />
               <select className="select" value={discountType} onChange={(e) => setDiscountType(e.target.value as AdjustmentType)}>
                 <option value="percent">%</option>
@@ -331,13 +334,12 @@ export default function EstimateEditor() {
               />
             </label>
             <div className="adjustment-row">
-              <input
-                type="number"
+              <NumericInput
                 className="input"
                 min={0}
-                step="0.01"
                 value={taxValue}
-                onChange={(e) => setTaxValue(Number(e.target.value))}
+                onChange={setTaxValue}
+                aria-label="Tax value"
               />
               <select className="select" value={taxType} onChange={(e) => setTaxType(e.target.value as AdjustmentType)}>
                 <option value="percent">%</option>

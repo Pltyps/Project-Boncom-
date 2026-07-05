@@ -17,41 +17,30 @@ export default function ToolshedHome() {
   return (
     <div>
       <div className="page-header">
-        <h1>Boncom Toolshed</h1>
+        <div>
+          <h1>Boncom Toolshed</h1>
+          <p className="page-subtitle">Internal tools, in one place. More on the way.</p>
+        </div>
       </div>
 
       {loading ? (
         <p>Loading…</p>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-            gap: "1rem",
-          }}
-        >
+        <div className="tile-grid">
           {apps.map((app) => (
             <div
               key={app.slug}
-              className="card"
+              className={`card tile-card ${app.accessible ? "accessible" : "locked"}`}
+              role={app.accessible ? "link" : undefined}
+              tabIndex={app.accessible ? 0 : undefined}
               onClick={() => app.accessible && navigate(`/${app.slug}`)}
-              style={{
-                padding: "1.5rem",
-                cursor: app.accessible ? "pointer" : "not-allowed",
-                opacity: app.accessible ? 1 : 0.5,
-              }}
+              onKeyDown={(e) => app.accessible && e.key === "Enter" && navigate(`/${app.slug}`)}
             >
-              <h3 style={{ marginBottom: "0.5rem" }}>{app.name}</h3>
-              <p style={{ color: "var(--color-text-muted)", fontSize: "0.9rem" }}>{app.description}</p>
-              {app.status === "coming_soon" && (
-                <span className="badge badge-draft" style={{ marginTop: "0.75rem" }}>
-                  Coming soon
-                </span>
-              )}
+              <h3>{app.name}</h3>
+              <p>{app.description}</p>
+              {app.status === "coming_soon" && <span className="badge badge-draft">Coming soon</span>}
               {app.status === "active" && !app.accessible && (
-                <span className="badge badge-draft" style={{ marginTop: "0.75rem" }}>
-                  Restricted
-                </span>
+                <span className="badge badge-draft">Restricted</span>
               )}
             </div>
           ))}

@@ -115,11 +115,23 @@ export default function Dashboard() {
               >
                 <div className="estimate-row-grid">
                   <span className="estimate-title">{est.title}</span>
-                  <span className="estimate-client">{est.clientName}</span>
-                  <span className={`badge badge-${est.status}`}>{est.status}</span>
-                  <span className="estimate-client">{formatDate(est.updatedAt)}</span>
+                  <span>
+                    <span className="row-label">Client</span>
+                    <span className="estimate-client">{est.clientName}</span>
+                  </span>
+                  <span>
+                    <span className="row-label">Status</span>
+                    <span className={`badge badge-${est.status}`}>{est.status}</span>
+                  </span>
+                  <span>
+                    <span className="row-label">Updated</span>
+                    <span className="estimate-client">{formatDate(est.updatedAt)}</span>
+                  </span>
                   <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
-                    <strong>{formatCurrency(est.total)}</strong>
+                    <span>
+                      <span className="row-label">Total</span>
+                      <strong>{formatCurrency(est.total)}</strong>
+                    </span>
                     <span style={{ display: "flex", gap: "0.25rem" }}>
                       <button
                         className="btn-ghost"

@@ -1,23 +1,86 @@
 :root {
-  --color-bg: #f7f7f5;
+  /* Boncom brand anchor: navy from the logo mark, used deliberately (not everywhere) */
+  --color-navy: #002042;
+  --color-navy-hover: #001730;
+  --color-navy-soft: #e8ecf2;
+  --color-navy-soft-strong: #cdd6e2;
+
+  --color-bg: #f5f6f8;
   --color-surface: #ffffff;
-  --color-border: #e4e2dd;
-  --color-text: #1c1b19;
-  --color-text-muted: #6b6963;
-  --color-accent: #2f5d50;
-  --color-accent-hover: #24463c;
-  --color-accent-soft: #e7efec;
-  --color-danger: #b3402a;
-  --color-danger-soft: #f7e9e5;
-  --color-draft: #8a7a3f;
-  --color-draft-soft: #f4edd8;
-  --color-sent: #2f5d50;
-  --color-sent-soft: #e7efec;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --shadow-sm: 0 1px 2px rgba(28, 27, 25, 0.06);
-  --shadow-md: 0 4px 16px rgba(28, 27, 25, 0.08);
+  --color-border: #dfe3e8;
+  --color-border-strong: #c2c9d2;
+  --color-text: #14181f;
+  --color-text-muted: #5c6570;
+  --color-text-faint: #8b93a0;
+
+  --color-accent: var(--color-navy);
+  --color-accent-hover: var(--color-navy-hover);
+  --color-accent-soft: var(--color-navy-soft);
+
+  --color-danger: #a5372a;
+  --color-danger-soft: #f7e8e4;
+  --color-draft: #8f6f2e;
+  --color-draft-soft: #f5edd9;
+  --color-sent: var(--color-navy);
+  --color-sent-soft: var(--color-navy-soft);
+
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+
+  --shadow-xs: 0 1px 2px rgba(0, 12, 32, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 12, 32, 0.08), 0 1px 2px rgba(0, 12, 32, 0.04);
+  --shadow-md: 0 6px 16px rgba(0, 12, 32, 0.10), 0 2px 4px rgba(0, 12, 32, 0.05);
+  --shadow-lg: 0 16px 40px rgba(0, 12, 32, 0.16), 0 4px 10px rgba(0, 12, 32, 0.06);
+
+  --focus-ring: 0 0 0 3px rgba(0, 32, 66, 0.22);
+
   color-scheme: light;
+}
+
+/* Dark mode: an explicit choice (toggle in the nav / login screen), not just
+   prefers-color-scheme - main.tsx/theme.tsx set data-theme on <html> and
+   persist it, falling back to the OS preference on first load. Accent blue
+   is lightened from the brand navy since #002042 nearly disappears against
+   a dark surface; decorative navy fields (login panel, nav border) inherit
+   the same token so the brand still reads as "navy", just a lighter tint. */
+:root[data-theme="dark"] {
+  --color-navy: #3f6ea8;
+  --color-navy-hover: #5a86bc;
+  --color-navy-soft: rgba(63, 110, 168, 0.18);
+  --color-navy-soft-strong: rgba(63, 110, 168, 0.32);
+
+  --color-bg: #0d1320;
+  --color-surface: #161d2c;
+  --color-border: #2a3244;
+  --color-border-strong: #3c4658;
+  --color-text: #e9edf4;
+  --color-text-muted: #a3adc0;
+  --color-text-faint: #6d7689;
+
+  --color-danger: #e0685a;
+  --color-danger-soft: rgba(224, 104, 90, 0.16);
+  --color-draft: #d9b25c;
+  --color-draft-soft: rgba(217, 178, 92, 0.16);
+  --color-sent: var(--color-navy);
+  --color-sent-soft: var(--color-navy-soft);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.35);
+
+  --focus-ring: 0 0 0 3px rgba(63, 110, 168, 0.4);
+
+  color-scheme: dark;
 }
 
 * {
@@ -28,8 +91,11 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Segoe UI Variable", Roboto, Helvetica,
+    Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  line-height: 1.45;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 h1, h2, h3 {
@@ -47,12 +113,26 @@ a {
   color: inherit;
 }
 
+::selection {
+  background: var(--color-navy-soft-strong);
+}
+
+/* Visible, accessible focus everywhere - a soft ring (not just a hard outline)
+   reads as more modern and doesn't get clipped by rounded corners. The
+   transparent outline is kept alongside it purely for forced-colors/high
+   contrast mode, where box-shadow is invisible but outline still renders. */
+:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
+
 #root {
   min-height: 100svh;
 }
 
 .app-shell {
-  min-height: 100vh;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
 }
@@ -61,19 +141,52 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  gap: var(--space-sm);
+  padding: 0.85rem clamp(1rem, 3vw, 1.5rem);
+  padding-top: max(0.85rem, env(safe-area-inset-top));
   border-bottom: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-navy);
   background: var(--color-surface);
   position: sticky;
   top: 0;
   z-index: 10;
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
 }
 
 .top-nav .brand {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   text-decoration: none;
   color: var(--color-text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.nav-user .role-badge {
+  text-transform: capitalize;
+}
+
+@media (max-width: 560px) {
+  .nav-user .role-badge-label {
+    display: none;
+  }
 }
 
 .main-content {
@@ -81,7 +194,7 @@ a {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: clamp(1rem, 4vw, 1.75rem) clamp(1rem, 4vw, 1.5rem) var(--space-xl);
 }
 
 .page-header {
@@ -89,7 +202,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-md);
   flex-wrap: wrap;
 }
 
@@ -97,17 +210,30 @@ a {
   font-size: 1.5rem;
 }
 
+.page-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  margin-top: 0.25rem;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: 0.55rem 1rem;
+  padding: 0.6rem 1.05rem;
+  min-height: 2.5rem;
   font-size: 0.9rem;
   font-weight: 500;
+  text-decoration: none;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.05s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
 }
 
 .btn-primary {
@@ -120,16 +246,17 @@ a {
 
 .btn-secondary {
   background: var(--color-surface);
-  border-color: var(--color-border);
+  border-color: var(--color-border-strong);
   color: var(--color-text);
 }
 .btn-secondary:hover {
   border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .btn-danger {
   background: var(--color-surface);
-  border-color: var(--color-border);
+  border-color: var(--color-border-strong);
   color: var(--color-danger);
 }
 .btn-danger:hover {
@@ -141,10 +268,13 @@ a {
   background: transparent;
   border-color: transparent;
   color: var(--color-text-muted);
-  padding: 0.4rem 0.6rem;
+  padding: 0.45rem 0.6rem;
+  min-height: 2.25rem;
+  min-width: 2.25rem;
 }
 .btn-ghost:hover {
   color: var(--color-text);
+  background: var(--color-bg);
 }
 
 .btn:disabled {
@@ -152,25 +282,39 @@ a {
   cursor: not-allowed;
 }
 
+.theme-toggle {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.login-theme-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 5;
+}
+
 .toolbar {
   display: flex;
   gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-md);
   flex-wrap: wrap;
 }
 
 .input, .select, .textarea {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
-  padding: 0.55rem 0.7rem;
+  padding: 0.6rem 0.75rem;
+  min-height: 2.5rem;
   background: var(--color-surface);
   color: var(--color-text);
   width: 100%;
 }
 
 .input:focus, .select:focus, .textarea:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--focus-ring);
 }
 
 .field {
@@ -223,7 +367,7 @@ a {
 .estimate-row-header {
   font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--color-text-muted);
   padding: 0.75rem 1.25rem;
   border-bottom: 1px solid var(--color-border);
@@ -236,6 +380,15 @@ a {
 .estimate-client {
   color: var(--color-text-muted);
   font-size: 0.9rem;
+}
+
+.row-label {
+  display: none;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-faint);
+  margin-bottom: 0.15rem;
 }
 
 .badge {
@@ -261,14 +414,14 @@ a {
 
 .empty-state {
   text-align: center;
-  padding: 3rem 1.5rem;
+  padding: 3.5rem 1.5rem;
   color: var(--color-text-muted);
 }
 
 .editor-layout {
   display: grid;
   grid-template-columns: 1fr 320px;
-  gap: 1.5rem;
+  gap: var(--space-md);
   align-items: start;
 }
 
@@ -288,7 +441,7 @@ a {
   text-align: left;
   font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--color-text-muted);
   padding: 0.5rem;
   border-bottom: 1px solid var(--color-border);
@@ -303,9 +456,10 @@ a {
 .line-items-table input {
   border: 1px solid transparent;
   background: transparent;
-  padding: 0.4rem 0.5rem;
+  padding: 0.5rem;
   border-radius: var(--radius-sm);
   width: 100%;
+  min-height: 2.4rem;
 }
 .line-items-table input:hover {
   border-color: var(--color-border);
@@ -314,6 +468,40 @@ a {
   border-color: var(--color-accent);
   outline: none;
   background: var(--color-surface);
+  box-shadow: var(--focus-ring);
+}
+
+.numeric-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.numeric-input-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background: var(--color-danger);
+  color: white;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  padding: 0.3rem 0.55rem;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  z-index: 20;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Defensive: no numeric input in the app uses type="number" (see the
+   NumericInput component - spinner arrows made it too easy to bump a value
+   while typing fast), but this keeps any stray one spinner-free too. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 .line-item-amount {
@@ -340,7 +528,7 @@ a {
 }
 
 .totals-row.total {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--color-text);
   border-top: 1px solid var(--color-border);
@@ -349,12 +537,12 @@ a {
 }
 
 .section-title {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--color-text-muted);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.85rem;
 }
 
 .adjustment-row {
@@ -362,6 +550,216 @@ a {
   grid-template-columns: 1fr 90px;
   gap: 0.5rem;
 }
+
+/* ---------- Login ---------- */
+
+.login-shell {
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+}
+
+.login-brand-panel {
+  background: var(--color-navy);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(2rem, 6vw, 4.5rem);
+}
+
+.login-brand-panel .eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 0.75rem;
+}
+
+.login-brand-panel h1 {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  line-height: 1.2;
+  max-width: 22ch;
+}
+
+.login-brand-panel p {
+  color: rgba(255, 255, 255, 0.75);
+  max-width: 40ch;
+  margin-top: 1rem;
+  font-size: 1rem;
+}
+
+.login-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.5rem, 5vw, 3rem);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 2.25rem;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-card h2 {
+  font-size: 1.3rem;
+  margin-bottom: 0.4rem;
+}
+
+.login-card p {
+  color: var(--color-text-muted);
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 860px) {
+  .login-shell {
+    grid-template-columns: 1fr;
+  }
+  .login-brand-panel {
+    padding: clamp(2rem, 8vw, 3rem) clamp(1.25rem, 6vw, 2rem);
+    text-align: left;
+  }
+  .login-brand-panel h1 {
+    max-width: none;
+  }
+}
+
+/* ---------- Toolshed home ---------- */
+
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--space-md);
+}
+
+.tile-card {
+  position: relative;
+  padding: 1.5rem;
+  text-align: left;
+  border-top: 3px solid var(--color-navy);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.tile-card.accessible {
+  cursor: pointer;
+}
+.tile-card.accessible:hover,
+.tile-card.accessible:focus-visible {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.tile-card.locked {
+  cursor: not-allowed;
+  border-top-color: var(--color-border-strong);
+  opacity: 0.65;
+}
+
+.tile-card h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1.05rem;
+}
+
+.tile-card p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.tile-card .badge {
+  margin-top: 0.85rem;
+}
+
+/* ---------- Admin users ---------- */
+
+.admin-row-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.6fr 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+
+.admin-row {
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.admin-row:last-child {
+  border-bottom: none;
+}
+
+/* ---------- History / audit log ---------- */
+
+.audit-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.audit-log-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Toasts ---------- */
+
+.toast-stack {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 100;
+  max-width: min(320px, calc(100vw - 2.5rem));
+}
+
+.toast {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  font-size: 0.9rem;
+  color: white;
+  animation: toast-in 0.15s ease-out;
+}
+
+.toast-success {
+  background: var(--color-navy);
+}
+
+.toast-error {
+  background: var(--color-danger);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .toast-stack {
+    left: 1rem;
+    right: 1rem;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    max-width: none;
+    align-items: stretch;
+  }
+}
+
+/* ---------- Print ---------- */
 
 @media print {
   .top-nav, .toolbar, .btn, .line-items-table button, .adjustment-row select {
@@ -383,6 +781,8 @@ a {
   }
 }
 
+/* ---------- Responsive: tablet / narrow ---------- */
+
 @media (max-width: 800px) {
   .editor-layout {
     grid-template-columns: 1fr;
@@ -393,12 +793,21 @@ a {
   .totals-summary {
     position: static;
   }
-  .estimate-row-grid {
+}
+
+/* ---------- Responsive: phones (incl. landscape) ---------- */
+
+@media (max-width: 640px) {
+  .estimate-row-grid,
+  .admin-row-grid {
     grid-template-columns: 1fr;
     gap: 0.35rem;
   }
   .estimate-row-header {
     display: none;
+  }
+  .row-label {
+    display: block;
   }
   .line-items-table thead {
     display: none;
@@ -413,6 +822,31 @@ a {
   }
   .line-item-amount {
     text-align: left;
+  }
+  .page-header {
+    align-items: flex-start;
+  }
+  .toolbar {
+    width: 100%;
+  }
+  .toolbar .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* Short landscape phones (e.g. a phone rotated) - the vertical space is the
+   scarce dimension there, not the horizontal, so trim vertical rhythm rather
+   than reflow columns again. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .top-nav {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+    padding-bottom: 0.5rem;
+  }
+  .main-content {
+    padding-top: 1rem;
+  }
+  .totals-summary {
+    position: static;
   }
 }
 
@@ -447,56 +881,4 @@ a {
 .info-tooltip:hover .info-tooltip-bubble,
 .info-tooltip:focus-visible .info-tooltip-bubble {
   display: block;
-}
-
-.audit-log {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-}
-
-.audit-log-row {
-  display: flex;
-  justify-content: space-between;
-  color: var(--color-text-muted);
-}
-
-.toast-stack {
-  position: fixed;
-  bottom: 1.25rem;
-  right: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  z-index: 100;
-  max-width: min(320px, calc(100vw - 2.5rem));
-}
-
-.toast {
-  padding: 0.7rem 1rem;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  font-size: 0.9rem;
-  color: white;
-  animation: toast-in 0.15s ease-out;
-}
-
-.toast-success {
-  background: var(--color-accent);
-}
-
-.toast-error {
-  background: var(--color-danger);
-}
-
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
