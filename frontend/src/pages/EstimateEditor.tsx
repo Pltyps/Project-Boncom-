@@ -7,8 +7,10 @@ import { useToast } from "../lib/toast";
 import { useConfirm } from "../lib/confirm";
 import { renderNodeToPdfBlob } from "../lib/invoicePdf";
 import ClientPicker from "../components/ClientPicker";
+import Icon from "../components/Icon";
 import InfoTooltip from "../components/InfoTooltip";
 import NumericInput from "../components/NumericInput";
+import Skeleton from "../components/Skeleton";
 import type { AdjustmentType, AuditLogEntry, Client, Estimate, EstimateStatus, LineItem } from "../types";
 
 const emptyLineItem: LineItem = { description: "", quantity: 1, rate: 0 };
@@ -263,18 +265,40 @@ export default function EstimateEditor() {
     }
   }
 
-  if (loading) return <p>Loading…</p>;
+  if (loading) {
+    return (
+      <div aria-busy="true" aria-label="Loading estimate">
+        <Skeleton width="10rem" height="1.5rem" className="skeleton-block" />
+        <div className="editor-layout">
+          <div className="card" style={{ padding: "1.25rem" }}>
+            <Skeleton width="60%" className="skeleton-block" />
+            <Skeleton width="85%" className="skeleton-block" />
+            <Skeleton width="70%" className="skeleton-block" />
+          </div>
+          <div className="card" style={{ padding: "1.25rem" }}>
+            <Skeleton width="50%" className="skeleton-block" />
+            <Skeleton width="80%" className="skeleton-block" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <Link to="/quoted" className="btn-ghost" style={{ display: "inline-block", marginBottom: "0.75rem" }}>
-        ← Back to estimates
+      <Link to="/quoted" className="btn-ghost back-link">
+        <Icon name="arrowLeft" size={16} /> Back to estimates
       </Link>
       <div className="page-header">
         <h1>{isNew ? "New estimate" : title || "Estimate"}</h1>
+        {/* Delete is deliberately first and Save last, so the destructive
+            action never sits next to the one people hit on autopilot. */}
         <div className="toolbar" style={{ margin: 0 }}>
           {!isNew && (
             <>
+              <button className="btn btn-danger" onClick={handleDelete}>
+                Delete
+              </button>
               <button className="btn btn-secondary" onClick={() => window.print()}>
                 Print
               </button>
@@ -283,9 +307,6 @@ export default function EstimateEditor() {
               </button>
               <button className="btn btn-secondary" onClick={handleDuplicate} disabled={duplicating}>
                 {duplicating ? "Duplicating…" : "Duplicate"}
-              </button>
-              <button className="btn btn-danger" onClick={handleDelete}>
-                Delete
               </button>
             </>
           )}
@@ -381,8 +402,13 @@ export default function EstimateEditor() {
                       {formatCurrency((li.quantity || 0) * (li.rate || 0))}
                     </td>
                     <td>
-                      <button className="btn-ghost" onClick={() => removeLineItem(i)} title="Remove line">
-                        ✕
+                      <button
+                        className="btn-ghost btn-ghost-danger"
+                        onClick={() => removeLineItem(i)}
+                        title="Remove line"
+                        aria-label="Remove line"
+                      >
+                        <Icon name="trash" size={16} />
                       </button>
                     </td>
                   </tr>
@@ -390,7 +416,7 @@ export default function EstimateEditor() {
               </tbody>
             </table>
             <button className="btn btn-secondary" style={{ marginTop: "1rem" }} onClick={addLineItem}>
-              + Add line item
+              <Icon name="plus" size={16} /> Add line item
             </button>
           </div>
 

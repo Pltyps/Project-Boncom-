@@ -27,7 +27,7 @@ export default function Login() {
         </span>
         <h1>One place for Boncom's internal tools.</h1>
         <p>
-          Sign in with your Boncom Google account to get to Quoted and the other tools joining
+          Sign in with your Boncom Google account to get to Quot:D and the other tools joining
           the Toolshed soon.
         </p>
       </div>

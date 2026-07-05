@@ -1,4 +1,5 @@
 import { useTheme } from "../lib/theme";
+import Icon from "./Icon";
 
 export default function ThemeToggle({ className = "", showLabel = false }: { className?: string; showLabel?: boolean }) {
   const { theme, toggleTheme } = useTheme();
@@ -16,7 +17,9 @@ export default function ThemeToggle({ className = "", showLabel = false }: { cla
         aria-label={label}
         title={label}
       >
-        <span className="theme-switch-knob">{isDark ? "☾" : "☀"}</span>
+        <span className="theme-switch-knob">
+          <Icon name={isDark ? "moon" : "sun"} size={13} />
+        </span>
       </button>
       {showLabel && <span>{label}</span>}
     </span>

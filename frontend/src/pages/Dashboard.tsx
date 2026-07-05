@@ -4,6 +4,8 @@ import { api } from "../lib/api";
 import { formatCurrency, formatDate } from "../lib/format";
 import { useToast } from "../lib/toast";
 import { useConfirm } from "../lib/confirm";
+import Icon from "../components/Icon";
+import Skeleton from "../components/Skeleton";
 import type { EstimateSummary } from "../types";
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100];
@@ -136,22 +138,29 @@ export default function Dashboard() {
     <div>
       <div className="page-header">
         <div>
-          <img src="/quotd-wordmark.png" alt="Quoted" className="quotd-wordmark" />
+          {/* Typographic wordmark instead of an image - it stays crisp at any
+              density and re-themes with the palette. The h1 remains the real
+              page title; this is decorative branding above it. */}
+          <span className="quotd-wordmark" aria-hidden="true">
+            Quot:D
+          </span>
           <h1>Estimates</h1>
         </div>
         <Link to="/quoted/estimates/new" className="btn btn-primary">
-          + New estimate
+          <Icon name="plus" size={16} /> New estimate
         </Link>
       </div>
 
       <div className="toolbar">
-        <input
-          className="input"
-          style={{ maxWidth: 280 }}
-          placeholder="Search by client or title"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <span className="input-icon-wrap" style={{ maxWidth: 280 }}>
+          <Icon name="search" size={16} className="input-icon" />
+          <input
+            className="input input-with-icon"
+            placeholder="Search by client or title"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </span>
         <select className="select" style={{ maxWidth: 160 }} value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">All statuses</option>
           <option value="draft">Draft</option>
@@ -161,14 +170,20 @@ export default function Dashboard() {
 
       <div className="card">
         {loading && estimates.length === 0 ? (
-          <div className="empty-state">
-            <p>Loading…</p>
+          <div aria-busy="true" aria-label="Loading estimates">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="estimate-list-row skeleton-row">
+                <Skeleton width={`${55 + ((i * 17) % 30)}%`} />
+                <Skeleton width="30%" />
+              </div>
+            ))}
           </div>
         ) : !loading && estimates.length === 0 ? (
           <div className="empty-state">
+            <Icon name="fileText" size={36} className="empty-state-icon" />
             <p>No estimates yet. Create your first one to get started.</p>
             <Link to="/quoted/estimates/new" className="btn btn-primary" style={{ marginTop: "1rem" }}>
-              New estimate
+              <Icon name="plus" size={16} /> New estimate
             </Link>
           </div>
         ) : (
@@ -220,16 +235,16 @@ export default function Dashboard() {
                         disabled={pendingId === est.id}
                         onClick={(e) => handleDuplicate(est.id, e)}
                       >
-                        ⧉
+                        <Icon name="copy" size={16} />
                       </button>
                       <button
-                        className="btn-ghost"
+                        className="btn-ghost btn-ghost-danger"
                         aria-label="Delete estimate"
                         title="Delete"
                         disabled={pendingId === est.id}
                         onClick={(e) => handleDelete(est.id, e)}
                       >
-                        ✕
+                        <Icon name="trash" size={16} />
                       </button>
                     </span>
                   </span>
@@ -266,7 +281,7 @@ export default function Dashboard() {
                     setFocusedIndex(0);
                   }}
                 >
-                  ← Prev
+                  <Icon name="chevronLeft" size={16} /> Prev
                 </button>
                 <button
                   className="btn btn-secondary"
@@ -276,7 +291,7 @@ export default function Dashboard() {
                     setFocusedIndex(0);
                   }}
                 >
-                  Next →
+                  Next <Icon name="chevronRight" size={16} />
                 </button>
               </div>
             </div>

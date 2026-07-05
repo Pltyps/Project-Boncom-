@@ -108,8 +108,13 @@ CREATE TABLE IF NOT EXISTS apps (
 );
 
 INSERT INTO apps (slug, name, description, status, min_role, sort_order) VALUES
-  ('quoted', 'Quoted', 'Create and manage client cost estimates', 'active', 'user', 0),
+  ('quoted', 'Quot:D', 'Create and manage client cost estimates', 'active', 'user', 0),
   ('tool-2', 'Coming Soon', 'Another Boncom tool, in the works', 'coming_soon', 'user', 1),
   ('tool-3', 'Coming Soon', 'Another Boncom tool, in the works', 'coming_soon', 'user', 2)
 ON CONFLICT (slug) DO NOTHING;
+
+-- Rename pass for databases seeded before the tool was christened Quot:D -
+-- the ON CONFLICT DO NOTHING above never touches existing rows. migrate.ts
+-- replays this whole file on deploy, so the rename lands automatically.
+UPDATE apps SET name = 'Quot:D' WHERE slug = 'quoted' AND name IN ('Quoted', 'Q:D');
 

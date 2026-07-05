@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type AdminUser } from "../lib/api";
 import { formatDate } from "../lib/format";
 import { useToast } from "../lib/toast";
+import Skeleton from "../components/Skeleton";
 
 const ROLES = ["user", "dev", "admin"] as const;
 
@@ -28,8 +29,6 @@ export default function AdminUsers() {
     }
   }
 
-  if (loading) return <p>Loading…</p>;
-
   return (
     <div>
       <div className="page-header">
@@ -38,6 +37,16 @@ export default function AdminUsers() {
           <p className="page-subtitle">Manage who can access which toolshed app.</p>
         </div>
       </div>
+      {loading ? (
+        <div className="card" aria-busy="true" aria-label="Loading users">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="admin-row skeleton-row">
+              <Skeleton width={`${45 + ((i * 13) % 35)}%`} />
+              <Skeleton width="25%" />
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="card">
         <div className="estimate-row-header admin-row-grid">
           <span>Name</span>
@@ -69,6 +78,7 @@ export default function AdminUsers() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

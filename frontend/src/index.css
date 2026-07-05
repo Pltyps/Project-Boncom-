@@ -21,6 +21,14 @@
   --color-accent-soft: var(--color-navy-soft);
   --color-accent-contrast: #ffffff;
 
+  /* Q:D's own mark - the "excel green" of the original quot'd logo. The
+     solid fill stays constant across themes (white ":D" on green reads in
+     both); the ink variant lightens in dark mode so green text keeps
+     contrast against the dark background. */
+  --color-qd: #107c41;
+  --color-qd-contrast: #ffffff;
+  --color-qd-ink: #0e6b39;
+
   --color-danger: #a5372a;
   --color-danger-soft: #f7e8e4;
   --color-draft: #8f6f2e;
@@ -75,6 +83,8 @@
   --color-accent-hover: #ffffff;
   --color-accent-soft: rgba(242, 237, 228, 0.12);
   --color-accent-contrast: #201d1a;
+
+  --color-qd-ink: #4cc082;
 
   --color-danger: #e0685a;
   --color-danger-soft: rgba(224, 104, 90, 0.16);
@@ -206,6 +216,84 @@ a {
   display: block;
 }
 
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav-link {
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nav-link:hover {
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+.nav-link.active {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.nav-drawer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.nav-drawer-links .nav-link {
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
+}
+
+/* Buttons that live in the nav share the .nav-link look so the bar reads as
+   one system instead of a mix of pills, outlines, and plain text. */
+.nav-link-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.nav-link-disabled {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
+
+.nav-link-disabled:hover {
+  color: var(--color-text-faint);
+  background: transparent;
+}
+
+.nav-link-note {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .nav-actions {
   display: flex;
   align-items: center;
@@ -234,7 +322,8 @@ a {
    wrapping onto a second line - a wrapped button row was cramping every
    page's vertical space on narrow screens. */
 @media (max-width: 768px) {
-  .top-nav .nav-actions {
+  .top-nav .nav-actions,
+  .top-nav .nav-links {
     display: none;
   }
   .nav-hamburger {
@@ -281,27 +370,39 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.nav-drawer-header .brand-logo {
+  height: 1.9rem;
+}
+
+/* Account/settings block pinned to the drawer's bottom edge (M3's drawer
+   pattern): sign out, then the theme toggle, then the signed-in user last. */
+.nav-drawer-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.nav-drawer-footer .nav-link-button {
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
 }
 
 .nav-drawer .nav-user {
-  padding: 0.5rem 0 1rem;
-  border-bottom: 1px solid var(--color-border);
-  margin-bottom: 0.25rem;
+  padding: 0.5rem 0.75rem 0.25rem;
   white-space: normal;
-}
-
-.nav-drawer .btn {
-  width: 100%;
-  justify-content: flex-start;
-  gap: 0.5rem;
 }
 
 .nav-drawer .theme-toggle-wrap {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.4rem 0;
+  padding: 0.4rem 0.75rem;
   color: var(--color-text);
 }
 
@@ -333,13 +434,15 @@ a {
   font-size: 1.5rem;
 }
 
-/* Quoted's own wordmark, shown above the "Estimates" heading - drop
-   quotd-wordmark.png into /public to replace the placeholder text it
-   sits above (the h1 stays for accessibility/SEO, this is decorative). */
+/* Q:D's typographic wordmark, shown above the "Estimates" heading in the
+   mark's own excel green (the h1 below stays the real, accessible page
+   title; this is decorative). */
 .quotd-wordmark {
   display: block;
-  height: 1.4rem;
-  width: auto;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-qd-ink);
   margin-bottom: 0.15rem;
 }
 
@@ -410,9 +513,23 @@ a {
   background: var(--color-bg);
 }
 
+.btn-ghost-danger:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  text-decoration: none;
+  font-size: 0.9rem;
 }
 
 .theme-toggle-wrap {
@@ -487,6 +604,25 @@ a {
   outline: none;
   border-color: var(--color-accent);
   box-shadow: var(--focus-ring);
+}
+
+.input-icon-wrap {
+  position: relative;
+  display: block;
+  flex: 1 1 auto;
+}
+
+.input-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.75rem;
+  transform: translateY(-50%);
+  color: var(--color-text-faint);
+  pointer-events: none;
+}
+
+.input-with-icon {
+  padding-left: 2.35rem;
 }
 
 .field {
@@ -590,6 +726,42 @@ a {
   color: var(--color-text-muted);
 }
 
+.empty-state-icon {
+  color: var(--color-text-faint);
+  margin-bottom: 0.5rem;
+}
+
+/* ---------- Loading skeletons ---------- */
+
+/* Shaped placeholders instead of a bare "Loading…" string - the page keeps
+   its layout while data arrives, so nothing jumps when rows render in. */
+.skeleton {
+  display: inline-block;
+  background: var(--color-navy-soft);
+  border-radius: 6px;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-block {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.skeleton-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
 .pagination-bar {
   display: flex;
   align-items: center;
@@ -672,6 +844,19 @@ a {
   padding: 0.4rem;
   vertical-align: top;
   border-bottom: 1px solid var(--color-border);
+}
+
+/* Qty/Rate get a guaranteed floor so multi-digit values never clip - the
+   description column is the one that should flex, not the numbers. */
+.line-items-table th:nth-child(2),
+.line-items-table th:nth-child(3) {
+  width: 5.5rem;
+}
+
+.line-items-table td:nth-child(2) input,
+.line-items-table td:nth-child(3) input {
+  min-width: 4.5rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .line-items-table input {
@@ -860,11 +1045,13 @@ input[type="number"] {
   gap: var(--space-md);
 }
 
+/* Launcher-style tiles: each app leads with its own badge (see AppBadge.tsx)
+   the way a home screen leads with app icons - the navy top border the tiles
+   used to carry moved into the badges, which now do the identifying. */
 .tile-card {
   position: relative;
   padding: 1.5rem;
   text-align: left;
-  border-top: 3px solid var(--color-navy);
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
@@ -879,8 +1066,47 @@ input[type="number"] {
 
 .tile-card.locked {
   cursor: not-allowed;
-  border-top-color: var(--color-border-strong);
   opacity: 0.65;
+}
+
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  margin-bottom: 0.85rem;
+}
+
+.app-badge-text {
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+/* Badge tones stay inside the restrained brand palette - the flagship tool
+   gets its own solid green mark; everything else sits on soft tints so no
+   tile shouts over the rest. */
+.app-badge-green {
+  background: var(--color-qd);
+  color: var(--color-qd-contrast);
+}
+
+.app-badge-navy-soft {
+  background: var(--color-navy-soft);
+  color: var(--color-navy);
+}
+
+.app-badge-gold {
+  background: var(--color-draft-soft);
+  color: var(--color-draft);
+}
+
+.app-badge-neutral {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .tile-card h3 {
@@ -1258,11 +1484,49 @@ input[type="number"] {
   .page-header {
     align-items: flex-start;
   }
+  /* A lone header action (e.g. "New estimate") goes full width on phones -
+     a comfortable thumb target instead of a small button beside the title. */
+  .page-header > .btn {
+    width: 100%;
+  }
   .toolbar {
     width: 100%;
   }
   .toolbar .btn {
     flex: 1 1 auto;
+  }
+}
+
+/* Touch devices get 44px minimum targets (Apple HIG's 44pt / Material's 48dp
+   floor) regardless of viewport width - a small tablet in landscape is wide
+   but still finger-driven, so this keys off pointer type, not screen size. */
+@media (pointer: coarse) {
+  .btn,
+  .input,
+  .select,
+  .textarea {
+    min-height: 2.75rem;
+  }
+  .btn-ghost {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+  .nav-link {
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+}
+
+/* Anyone who asked their OS to reduce motion gets an effectively static UI -
+   the skeleton pulse, drawer slide, and hover lifts all read as decoration,
+   none of them carry information. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

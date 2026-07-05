@@ -1,11 +1,11 @@
 # Boncom Toolshed
 
 A small internal tools launcher, built for Boncom's take-home exercise. The first (and currently
-only working) tool is **Quoted** — replaces a spreadsheet workflow for client cost estimates where
+only working) tool is **Quot:D** — replaces a spreadsheet workflow for client cost estimates where
 line items got copied by hand and tax math got rechecked every time. Other tiles on the home
 screen are placeholders for future internal tools.
 
-## What Quoted does
+## What Quot:D does
 
 - Create an estimate for a client, add line items (description, qty, rate), and watch the totals
   update as you type.
@@ -25,7 +25,7 @@ screen are placeholders for future internal tools.
 Sign-in is Google OAuth only — no separate account system. Three roles: **user**, **dev**,
 **admin**. The first person ever to sign in becomes admin automatically (so there's always someone
 who can grant access without a manual DB edit); everyone after that starts as `user`. Admins manage
-roles from the Users page. Each toolshed app has a `min_role` — Quoted is open to everyone signed
+roles from the Users page. Each toolshed app has a `min_role` — Quot:D is open to everyone signed
 in; a future app could be restricted to `dev`/`admin` by raising that one column, no code change.
 An optional `ALLOWED_EMAILS` env var can restrict sign-in to a specific list entirely.
 

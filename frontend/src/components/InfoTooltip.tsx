@@ -1,3 +1,5 @@
+import Icon from "./Icon";
+
 interface Props {
   text: string;
 }
@@ -7,7 +9,7 @@ interface Props {
 export default function InfoTooltip({ text }: Props) {
   return (
     <span className="info-tooltip" tabIndex={0} aria-label={text}>
-      <span aria-hidden="true">ⓘ</span>
+      <Icon name="info" size={13} />
       <span className="info-tooltip-bubble" role="tooltip">
         {text}
       </span>
