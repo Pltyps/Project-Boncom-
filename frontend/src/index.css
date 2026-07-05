@@ -4,6 +4,9 @@
   --color-navy-hover: #001730;
   --color-navy-soft: #e8ecf2;
   --color-navy-soft-strong: #cdd6e2;
+  /* Stays deep navy in both themes - for solid fills with white text (login
+     panel, success toast), not part of the light/dark chrome-accent swap. */
+  --color-navy-panel: #002042;
 
   --color-bg: #f5f6f8;
   --color-surface: #ffffff;
@@ -16,6 +19,7 @@
   --color-accent: var(--color-navy);
   --color-accent-hover: var(--color-navy-hover);
   --color-accent-soft: var(--color-navy-soft);
+  --color-accent-contrast: #ffffff;
 
   --color-danger: #a5372a;
   --color-danger-soft: #f7e8e4;
@@ -48,23 +52,29 @@
 
 /* Dark mode: an explicit choice (toggle in the nav / login screen), not just
    prefers-color-scheme - main.tsx/theme.tsx set data-theme on <html> and
-   persist it, falling back to the OS preference on first load. Accent blue
-   is lightened from the brand navy since #002042 nearly disappears against
-   a dark surface; decorative navy fields (login panel, nav border) inherit
-   the same token so the brand still reads as "navy", just a lighter tint. */
+   persist it, falling back to the OS preference on first load. The brand
+   navy stays for decorative chrome (nav border, tile border) but desaturated
+   toward a cool graphite so it doesn't read as generic "SaaS blue"; the
+   interactive accent switches to a warm paper-ivory (matching Boncom's
+   editorial/paper tone) with dark text, instead of a colored button. */
 :root[data-theme="dark"] {
-  --color-navy: #3f6ea8;
-  --color-navy-hover: #5a86bc;
-  --color-navy-soft: rgba(63, 110, 168, 0.18);
-  --color-navy-soft-strong: rgba(63, 110, 168, 0.32);
+  --color-navy: #7d8ba3;
+  --color-navy-hover: #97a3b8;
+  --color-navy-soft: rgba(125, 139, 163, 0.16);
+  --color-navy-soft-strong: rgba(125, 139, 163, 0.28);
 
-  --color-bg: #0d1320;
-  --color-surface: #161d2c;
-  --color-border: #2a3244;
-  --color-border-strong: #3c4658;
-  --color-text: #e9edf4;
-  --color-text-muted: #a3adc0;
-  --color-text-faint: #6d7689;
+  --color-bg: #14120f;
+  --color-surface: #1e1c19;
+  --color-border: #322f2a;
+  --color-border-strong: #47433c;
+  --color-text: #f1ede6;
+  --color-text-muted: #b3ac9f;
+  --color-text-faint: #766f63;
+
+  --color-accent: #f2ede4;
+  --color-accent-hover: #ffffff;
+  --color-accent-soft: rgba(242, 237, 228, 0.12);
+  --color-accent-contrast: #201d1a;
 
   --color-danger: #e0685a;
   --color-danger-soft: rgba(224, 104, 90, 0.16);
@@ -78,7 +88,7 @@
   --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.35);
 
-  --focus-ring: 0 0 0 3px rgba(63, 110, 168, 0.4);
+  --focus-ring: 0 0 0 3px rgba(242, 237, 228, 0.3);
 
   color-scheme: dark;
 }
@@ -155,12 +165,35 @@ a {
 }
 
 .top-nav .brand {
+  display: inline-flex;
+  align-items: center;
   font-size: 1.05rem;
   font-weight: 700;
   text-decoration: none;
   color: var(--color-text);
   letter-spacing: -0.01em;
   white-space: nowrap;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 6px;
+  background: var(--color-navy-panel);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-right: 0.55rem;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.brand-mark-inverse {
+  background: #fff;
+  color: var(--color-navy-panel);
 }
 
 .nav-actions {
@@ -183,8 +216,81 @@ a {
   text-transform: capitalize;
 }
 
-@media (max-width: 560px) {
-  .nav-user .role-badge-label {
+.nav-hamburger {
+  display: none;
+}
+
+/* Below this width, nav-actions moves into a slide-in drawer instead of
+   wrapping onto a second line - a wrapped button row was cramping every
+   page's vertical space on narrow screens. */
+@media (max-width: 768px) {
+  .top-nav .nav-actions {
+    display: none;
+  }
+  .nav-hamburger {
+    display: inline-flex;
+  }
+}
+
+.nav-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 22, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 40;
+}
+.nav-drawer-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nav-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100dvh;
+  width: min(80vw, 300px);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+.nav-drawer.open {
+  transform: translateX(0);
+}
+
+.nav-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.nav-drawer .nav-user {
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0.25rem;
+  white-space: normal;
+}
+
+.nav-drawer .btn,
+.nav-drawer .theme-toggle {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+@media (min-width: 769px) {
+  .nav-drawer,
+  .nav-drawer-backdrop {
     display: none;
   }
 }
@@ -238,7 +344,7 @@ a {
 
 .btn-primary {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-accent-contrast);
 }
 .btn-primary:hover {
   background: var(--color-accent-hover);
@@ -561,7 +667,7 @@ input[type="number"] {
 }
 
 .login-brand-panel {
-  background: var(--color-navy);
+  background: var(--color-navy-panel);
   color: white;
   display: flex;
   flex-direction: column;
@@ -570,6 +676,8 @@ input[type="number"] {
 }
 
 .login-brand-panel .eyebrow {
+  display: inline-flex;
+  align-items: center;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.75rem;
@@ -731,7 +839,7 @@ input[type="number"] {
 }
 
 .toast-success {
-  background: var(--color-navy);
+  background: var(--color-navy-panel);
 }
 
 .toast-error {

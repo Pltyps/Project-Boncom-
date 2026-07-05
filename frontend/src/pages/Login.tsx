@@ -22,7 +22,10 @@ export default function Login() {
     <div className="login-shell">
       <ThemeToggle className="login-theme-toggle" />
       <div className="login-brand-panel">
-        <span className="eyebrow">Boncom Toolshed</span>
+        <span className="eyebrow">
+          <span className="brand-mark brand-mark-inverse">B</span>
+          Boncom Toolshed
+        </span>
         <h1>A tidier way to put a number on good work.</h1>
         <p>
           Quoted replaces the spreadsheet: build a client estimate, get the math right the first

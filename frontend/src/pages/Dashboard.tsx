@@ -66,6 +66,9 @@ export default function Dashboard() {
     <div>
       <div className="page-header">
         <h1>Estimates</h1>
+        <Link to="/quoted/estimates/new" className="btn btn-primary">
+          + New estimate
+        </Link>
       </div>
 
       <div className="toolbar">
