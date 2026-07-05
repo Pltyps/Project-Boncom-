@@ -6,7 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run migrate && tsc -p tsconfig.json",
     "start": "node src/server.ts",
     "typecheck": "tsc --noEmit",
     "migrate": "tsx src/db/migrate.ts"
