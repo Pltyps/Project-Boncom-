@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
+import Icon from "./Icon";
 import type { Client } from "../types";
 
 interface Props {
@@ -43,6 +44,7 @@ export default function ClientPicker({ clients, selectedId, onSelect, onCreated,
     setForm(emptyForm);
     setFormError(null);
     setMode("create");
+    setOpen(true);
   }
 
   function startEdit() {
@@ -81,7 +83,7 @@ export default function ClientPicker({ clients, selectedId, onSelect, onCreated,
   return (
     <div className="field" ref={containerRef} style={{ position: "relative" }}>
       <label>Client</label>
-      <div style={{ display: "flex", gap: "0.4rem" }}>
+      <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
         <button
           type="button"
           className="input"
@@ -93,9 +95,15 @@ export default function ClientPicker({ clients, selectedId, onSelect, onCreated,
         >
           {selected ? selected.name : "Select a client…"}
         </button>
+        {/* Compact icon actions beside the picker: add a new client, edit the
+            selected one - kept out of the dropdown list itself so "create" is
+            one click, not open-then-scroll-to-the-bottom. */}
+        <button type="button" className="btn-ghost" title="Add new client" aria-label="Add new client" onClick={startCreate}>
+          <Icon name="plus" size={16} />
+        </button>
         {selected && (
-          <button type="button" className="btn-ghost" title="Edit client details" onClick={startEdit}>
-            Edit
+          <button type="button" className="btn-ghost" title="Edit client details" aria-label="Edit client details" onClick={startEdit}>
+            <Icon name="pencil" size={16} />
           </button>
         )}
       </div>
@@ -138,14 +146,11 @@ export default function ClientPicker({ clients, selectedId, onSelect, onCreated,
                   {c.name}
                 </button>
               ))}
-              <button
-                type="button"
-                className="btn-ghost"
-                style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 0.75rem", color: "var(--color-accent)" }}
-                onClick={startCreate}
-              >
-                + Add new client
-              </button>
+              {filtered.length === 0 && (
+                <p style={{ padding: "0.5rem 0.75rem", margin: 0, fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
+                  No matches — use the + button to add a client.
+                </p>
+              )}
             </>
           )}
 

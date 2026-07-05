@@ -1,15 +1,69 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import ToolshedHome from "./pages/ToolshedHome";
 import Dashboard from "./pages/Dashboard";
 import EstimateEditor from "./pages/EstimateEditor";
 import AdminUsers from "./pages/AdminUsers";
 import Login from "./pages/Login";
 import { api, type AppTile } from "./lib/api";
-import { roleMeets, useAuth } from "./lib/authContext";
+import { roleMeets, useAuth, type Role } from "./lib/authContext";
+import { useToast } from "./lib/toast";
 import { appDisplayName } from "./components/AppBadge";
 import ThemeToggle from "./components/ThemeToggle";
 import Icon from "./components/Icon";
+
+const ROLES: Role[] = ["user", "dev", "admin"];
+
+// Demo accounts get a live role switcher where everyone else sees a static
+// role badge, so a reviewer can tour user/dev/admin without a second admin
+// to restore them. The backend re-issues the session token on each switch
+// and writes the change to the audit log.
+function RoleSwitcher() {
+  const { user, login } = useAuth();
+  const { showToast } = useToast();
+  const [switching, setSwitching] = useState(false);
+
+  if (!user) return null;
+  if (!user.demo) {
+    return (
+      <>
+        <span className="role-badge-label">&nbsp;(</span>
+        <span className="role-badge">{user.role}</span>
+        <span className="role-badge-label">)</span>
+      </>
+    );
+  }
+
+  async function handleSwitch(role: string) {
+    setSwitching(true);
+    try {
+      const { token, user: updated } = await api.changeRole(role);
+      login(token, updated);
+      showToast(`Now browsing as ${updated.role}`);
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    } finally {
+      setSwitching(false);
+    }
+  }
+
+  return (
+    <select
+      className="select role-switcher"
+      value={user.role}
+      disabled={switching}
+      onChange={(e) => handleSwitch(e.target.value)}
+      aria-label="Demo role switcher"
+      title="Demo account: switch access level"
+    >
+      {ROLES.map((r) => (
+        <option key={r} value={r}>
+          {r}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function App() {
   const { user, logout } = useAuth();
@@ -87,9 +141,7 @@ function App() {
         <div className="nav-actions">
           <span className="nav-user">
             {user.name}
-            <span className="role-badge-label">&nbsp;(</span>
-            <span className="role-badge">{user.role}</span>
-            <span className="role-badge-label">)</span>
+            <RoleSwitcher />
           </span>
           <ThemeToggle />
           <button className="nav-link nav-link-button" onClick={logout}>
@@ -148,7 +200,8 @@ function App() {
           </button>
           <ThemeToggle className="nav-drawer-theme-toggle" showLabel />
           <span className="nav-user">
-            {user.name} ({user.role})
+            {user.name}
+            {user.demo ? <RoleSwitcher /> : <> ({user.role})</>}
           </span>
         </div>
       </nav>
@@ -162,6 +215,10 @@ function App() {
           <Route path="/quoted/estimates/new" element={<EstimateEditor />} />
           <Route path="/quoted/estimates/:id" element={<EstimateEditor />} />
           {isAdmin && <Route path="/admin/users" element={<AdminUsers />} />}
+          {/* Dropping access mid-session (e.g. the demo role switcher going
+              admin -> user while on /admin/users) lands on Home, not a
+              blank unmatched route. */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>

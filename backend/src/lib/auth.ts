@@ -58,6 +58,21 @@ export function verifySession(token: string): SessionUser {
   return { email: decoded.email as string, name: decoded.name as string, role: decoded.role as Role };
 }
 
+// Demo accounts may switch their own role freely (POST /api/auth/role) so a
+// reviewer can walk through all three access levels without a second admin
+// standing by to restore them. Comma-separated env override; defaults to the
+// project owner's account so the demo works without extra env setup. Every
+// switch is written to the audit log like any other role change.
+const DEFAULT_DEMO_EMAILS = "navin.manirajan.0@gmail.com";
+
+export function isDemoAccount(email: string): boolean {
+  const list = process.env.DEMO_EMAILS ?? DEFAULT_DEMO_EMAILS;
+  return list
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .includes(email.toLowerCase());
+}
+
 // Unset (the default) means anyone with a Google account can sign in - fine
 // for trying this out, but worth setting before treating the data as
 // actually access-controlled.

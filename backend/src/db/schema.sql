@@ -82,6 +82,13 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_entity ON audit_log(entity_type, entity
 -- Shape: [{ "field": "Title", "oldValue": "...", "newValue": "..." }, ...]
 ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS changes JSONB;
 
+-- Role changes are audited too ('user' rows), so access-level history holds
+-- up under the same scrutiny as the estimate data itself. Replayed
+-- idempotently: drop-then-add re-applies the widened CHECK on every deploy.
+ALTER TABLE audit_log DROP CONSTRAINT IF EXISTS audit_log_entity_type_check;
+ALTER TABLE audit_log ADD CONSTRAINT audit_log_entity_type_check
+  CHECK (entity_type IN ('client', 'estimate', 'user'));
+
 -- One row per person who has ever signed in. Role is set once at first
 -- sign-in (see auth.ts for the "first user ever becomes admin" bootstrap
 -- rule) and only changes after that via the admin users page - it is

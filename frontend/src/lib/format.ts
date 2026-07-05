@@ -4,7 +4,16 @@ export function formatCurrency(value: string | number): string {
 }
 
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  // Date-only strings ("2026-08-15", e.g. due dates) are calendar dates, not
+  // instants - new Date() would read one as UTC midnight and show the
+  // previous day for any viewer west of UTC. An off-by-one date on a printed
+  // estimate is exactly the kind of discrepancy an audit flags, so parse the
+  // parts as a local date instead.
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  const date = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(iso);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 // Always Mountain Time regardless of the viewer's own device/browser

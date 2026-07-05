@@ -66,6 +66,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ idToken }),
     }),
+  // Demo accounts only (backend enforces it) - swaps the session for one
+  // with the requested role so the reviewer can tour all access levels.
+  changeRole: (role: string) =>
+    request<{ token: string; user: AuthUser }>("/auth/role", {
+      method: "POST",
+      body: JSON.stringify({ role }),
+    }),
 
   listClients: () => request<Client[]>("/clients"),
   createClient: (data: { name: string; email?: string; company?: string; address?: string }) =>

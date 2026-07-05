@@ -15,6 +15,19 @@ import type { AdjustmentType, AuditLogEntry, Client, Estimate, EstimateStatus, L
 
 const emptyLineItem: LineItem = { description: "", quantity: 1, rate: 0 };
 
+// Local (not UTC) YYYY-MM-DD, used as the due-date picker's floor - a due
+// date can never be set into the past. The backend enforces the same rule.
+function todayLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  create: "Created",
+  update: "Updated",
+  delete: "Deleted",
+};
+
 // Boncom's own "From" details for the printable invoice - fill in email/
 // phone here once confirmed; everything else on the invoice is derived
 // from the estimate/client data.
@@ -286,7 +299,7 @@ export default function EstimateEditor() {
 
   return (
     <div>
-      <Link to="/quoted" className="btn-ghost back-link">
+      <Link to="/quoted" className="btn btn-secondary back-link">
         <Icon name="arrowLeft" size={16} /> Back to estimates
       </Link>
       <div className="page-header">
@@ -352,8 +365,10 @@ export default function EstimateEditor() {
                   type="date"
                   className="input"
                   value={dueDate}
+                  min={todayLocal()}
                   onChange={(e) => setDueDate(e.target.value)}
                 />
+                {fieldErrors.dueDate && <span className="field-error">{fieldErrors.dueDate[0]}</span>}
               </div>
             </div>
           </div>
@@ -524,15 +539,26 @@ export default function EstimateEditor() {
                 <div key={i} className="audit-log-entry">
                   <div className="audit-log-row">
                     <span>
-                      {entry.action} — {entry.actorName}
+                      <strong className="audit-log-action">{ACTION_LABELS[entry.action] ?? entry.action}</strong> by{" "}
+                      {entry.actorName}
                     </span>
                     <span>{formatDateTime(entry.createdAt)}</span>
                   </div>
+                  {/* Every update lists each field's before -> after value,
+                      so the trail stands on its own in an audit - no need to
+                      reconstruct what "update" meant from memory. */}
                   {entry.changes && entry.changes.length > 0 && (
                     <ul className="audit-log-changes">
                       {entry.changes.map((change, j) => (
                         <li key={j}>
-                          <strong>{change.field}:</strong> {change.oldValue ?? "—"} → {change.newValue ?? "—"}
+                          <strong>{change.field}</strong>
+                          <span className="audit-change-values">
+                            <span className="audit-old-value">{change.oldValue ?? "(empty)"}</span>
+                            <span className="audit-change-arrow" aria-label="changed to">
+                              →
+                            </span>
+                            <span className="audit-new-value">{change.newValue ?? "(empty)"}</span>
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -550,14 +576,47 @@ export default function EstimateEditor() {
           see .capturing) as the source node for the Share button's PDF. */}
       {!isNew && createdAt && (
         <div ref={invoiceRef} className={`invoice-print-only ${capturing ? "capturing" : ""}`}>
-          <div className="invoice-logo-box">
-            <span className="brand-mark">B</span> {BONCOM_DETAILS.name}
+          {/* Navy masthead in Boncom's editorial style: the real wordmark
+              (gray/white variant, made for navy backgrounds) on the left, the
+              document type on the right. */}
+          <header className="invoice-header">
+            <img src="/boncom-logo-gray.png" alt="Boncom" className="invoice-logo" />
+            <div className="invoice-header-meta">
+              <span className="invoice-doc-type">Cost Estimate</span>
+              <span className="invoice-doc-status">{status === "sent" ? "Final" : "Draft"}</span>
+            </div>
+          </header>
+
+          <h2 className="invoice-title">{title}</h2>
+
+          {/* Reference block: everything an auditor needs to tie this paper
+              back to the system record - number, dates, and who prepared it. */}
+          <div className="invoice-meta-row">
+            <span>
+              <span className="invoice-meta-label">Estimate No.</span>
+              {id?.slice(0, 8).toUpperCase()}
+            </span>
+            <span>
+              <span className="invoice-meta-label">Issued</span>
+              {formatDate(createdAt)}
+            </span>
+            {dueDate && (
+              <span>
+                <span className="invoice-meta-label">Due</span>
+                {formatDate(dueDate)}
+              </span>
+            )}
+            {createdByName && (
+              <span>
+                <span className="invoice-meta-label">Prepared by</span>
+                {createdByName}
+              </span>
+            )}
           </div>
 
           <div className="invoice-parties">
             <div className="invoice-party">
-              <h4>Your details</h4>
-              <span className="invoice-party-label">FROM</span>
+              <span className="invoice-party-label">From</span>
               <strong>{BONCOM_DETAILS.name}</strong>
               <p>
                 {BONCOM_DETAILS.addressLines.map((line) => (
@@ -569,8 +628,7 @@ export default function EstimateEditor() {
               </p>
             </div>
             <div className="invoice-party">
-              <h4>Client's details</h4>
-              <span className="invoice-party-label">TO</span>
+              <span className="invoice-party-label">To</span>
               <strong>{selectedClient?.name}</strong>
               {selectedClient?.company && <p>{selectedClient.company}</p>}
               {selectedClient?.address && <p style={{ whiteSpace: "pre-line" }}>{selectedClient.address}</p>}
@@ -578,27 +636,13 @@ export default function EstimateEditor() {
             </div>
           </div>
 
-          <div className="invoice-meta-row">
-            <span>
-              <strong>Invoice No:</strong> {id?.slice(0, 8).toUpperCase()}
-            </span>
-            <span>
-              <strong>Invoice Date:</strong> {formatDate(createdAt)}
-            </span>
-            {dueDate && (
-              <span>
-                <strong>Due Date:</strong> {formatDate(dueDate)}
-              </span>
-            )}
-          </div>
-
           <table className="invoice-items-table">
             <thead>
               <tr>
                 <th>Item</th>
-                <th>HRS/QTY</th>
+                <th>Hrs/Qty</th>
                 <th>Rate</th>
-                <th>Subtotal</th>
+                <th>Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -614,7 +658,6 @@ export default function EstimateEditor() {
           </table>
 
           <div className="invoice-summary-box">
-            <h4>Invoice Summary</h4>
             <div className="invoice-summary-row">
               <span>Subtotal</span>
               <span>{formatCurrency(totals.subtotal)}</span>
@@ -636,6 +679,20 @@ export default function EstimateEditor() {
               <span>{formatCurrency(totals.total)}</span>
             </div>
           </div>
+
+          {notes && (
+            <div className="invoice-notes">
+              <span className="invoice-party-label">Notes</span>
+              <p style={{ whiteSpace: "pre-line" }}>{notes}</p>
+            </div>
+          )}
+
+          {/* Full system reference in the footer so any printed copy can be
+              traced back to the exact database record and its audit trail. */}
+          <footer className="invoice-footer">
+            <span>Ref {id}</span>
+            <span>Boncom · Triad Center, 55 N 300 W, Salt Lake City, Utah</span>
+          </footer>
         </div>
       )}
     </div>

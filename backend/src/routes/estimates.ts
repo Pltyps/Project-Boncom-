@@ -15,6 +15,26 @@ function formatLineItems(items: { description: string; quantity: number | string
     .join("; ");
 }
 
+// Normalizes a DATE value (pg may hand back a Date object or a string) to
+// plain YYYY-MM-DD for comparison.
+function toDateStr(value: string | Date | null | undefined): string | null {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+}
+
+// A due date may never be set into the past - backdated deadlines are how
+// paper trails stop surviving audits. Compared against server "today" in UTC
+// with one day of grace, so a user west of UTC setting their local today
+// isn't rejected. Existing (unchanged) past due dates stay valid: an old
+// estimate must remain editable without forcing its deadline forward.
+function isBackdated(dueDate: string | undefined, previous: string | null = null): boolean {
+  if (!dueDate) return false;
+  if (previous && toDateStr(dueDate) === previous) return false;
+  const graceFloor = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return dueDate < graceFloor;
+}
+
 export const estimatesRouter = Router();
 
 interface EstimateRow {
@@ -56,7 +76,7 @@ function serializeEstimate(estimate: EstimateRow, lineItems: LineItemRow[]) {
     taxType: estimate.tax_type,
     taxValue: Number(estimate.tax_value),
     notes: estimate.notes,
-    dueDate: estimate.due_date,
+    dueDate: toDateStr(estimate.due_date),
     createdAt: estimate.created_at,
     updatedAt: estimate.updated_at,
     createdByName: estimate.created_by_name,
@@ -187,6 +207,12 @@ estimatesRouter.post("/", async (req, res, next) => {
   const data = parsed.data;
   const actor = req.user!;
 
+  if (isBackdated(data.dueDate)) {
+    return res.status(400).json({
+      error: { fieldErrors: { dueDate: ["Due date can't be in the past"] } },
+    });
+  }
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -245,6 +271,14 @@ estimatesRouter.put("/:id", async (req, res, next) => {
       return res.status(404).json({ error: "Estimate not found" });
     }
     const before = beforeResult.rows[0];
+
+    if (isBackdated(data.dueDate, toDateStr(before.due_date))) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        error: { fieldErrors: { dueDate: ["Due date can't be moved into the past"] } },
+      });
+    }
+
     const beforeLineItems = await client.query<LineItemRow>(
       `SELECT * FROM line_items WHERE estimate_id = $1 ORDER BY position ASC`,
       [before.id]
@@ -293,7 +327,7 @@ estimatesRouter.put("/:id", async (req, res, next) => {
         discount: formatAdjustment(before.discount_type, before.discount_value),
         tax: formatAdjustment(before.tax_type, before.tax_value),
         notes: before.notes,
-        dueDate: before.due_date,
+        dueDate: toDateStr(before.due_date),
         lineItems: formatLineItems(beforeLineItems.rows),
       },
       {

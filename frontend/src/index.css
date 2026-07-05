@@ -200,8 +200,10 @@ a {
   height: 2.3rem;
 }
 
+/* The logo leads the login panel's hierarchy - it's the brand moment of the
+   whole app - so it sits well above the heading in size. */
 .login-brand-panel .brand-logo {
-  height: 3rem;
+  height: 4.75rem;
 }
 
 .brand-logo-gray {
@@ -523,13 +525,62 @@ a {
   cursor: not-allowed;
 }
 
+/* Rendered as a real .btn.btn-secondary so it reads as an unmistakable
+   action in the brand's navy outline style, not a stray text link. */
 .back-link {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.85rem;
+}
+
+/* Demo-only role dropdown that replaces the static role badge. */
+.role-switcher {
+  margin-left: 0.5rem;
+  padding: 0.2rem 1.6rem 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  width: auto;
+}
+
+.audit-log-action {
+  color: var(--color-text);
+  font-weight: 600;
+  text-transform: none;
+}
+
+.audit-log-changes li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: baseline;
+}
+
+.audit-change-values {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.audit-old-value {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  overflow-wrap: anywhere;
+}
+
+.audit-change-arrow {
+  color: var(--color-text-muted);
+}
+
+.audit-new-value {
+  color: var(--color-text);
+  font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .theme-toggle-wrap {
@@ -978,24 +1029,22 @@ input[type="number"] {
 .login-brand-panel .eyebrow {
   display: inline-flex;
   align-items: center;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
 .login-brand-panel h1 {
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-  line-height: 1.2;
-  max-width: 22ch;
+  font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+  font-weight: 600;
+  line-height: 1.3;
+  max-width: 26ch;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .login-brand-panel p {
-  color: rgba(255, 255, 255, 0.75);
-  max-width: 40ch;
-  margin-top: 1rem;
-  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 44ch;
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
 }
 
 .login-form-panel {
@@ -1302,7 +1351,13 @@ input[type="number"] {
 }
 
 @media print {
-  .top-nav, .nav-drawer, .nav-drawer-backdrop {
+  /* Zero page margins remove the browser's own header/footer (date, page
+     title, URL) - there's simply no margin band left to print them in. The
+     document's breathing room comes from .invoice-print-only's padding. */
+  @page {
+    margin: 0;
+  }
+  .top-nav, .nav-drawer, .nav-drawer-backdrop, .toast-stack {
     display: none !important;
   }
   /* Hides every direct child of the editor's wrapper (back link, page
@@ -1321,47 +1376,97 @@ input[type="number"] {
     display: block;
     color: #111;
     font-size: 12px;
-    padding: 0.5in;
+    padding: 0.6in 0.7in;
   }
 }
 
-.invoice-logo-box {
-  display: inline-flex;
+/* The navy masthead and total band must keep their ink when printed -
+   browsers strip background colors by default. */
+.invoice-print-only {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Editorial masthead: Boncom's wordmark on its own navy band, the way the
+   brand leads on boncom.com, with the document type set opposite. */
+.invoice-header {
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  border: 1px solid var(--color-navy-panel);
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #002042;
+  color: #fff;
+  border-radius: 8px;
+  padding: 1.1rem 1.4rem;
+  margin-bottom: 1.75rem;
+}
+
+.invoice-logo {
+  height: 2.4rem;
+  width: auto;
+  display: block;
+}
+
+.invoice-header-meta {
+  text-align: right;
+}
+
+.invoice-doc-type {
+  display: block;
+  font-size: 0.95rem;
   font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--color-navy-panel);
-  margin-bottom: 1.5rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.invoice-doc-status {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.invoice-title {
+  margin: 0 0 1rem;
+  font-size: 1.35rem;
+  color: #002042;
+}
+
+.invoice-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+  margin-bottom: 1.75rem;
+  padding: 0.75rem 0;
+  border-top: 2px solid #002042;
+  border-bottom: 1px solid #e2e6ec;
+  font-size: 0.85rem;
+  color: #1c2430;
+}
+
+.invoice-meta-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #8b93a0;
+  margin-bottom: 0.2rem;
 }
 
 .invoice-parties {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.invoice-party {
-  border: 1px solid #d6dbe2;
-  border-radius: 6px;
-  padding: 1rem;
-}
-
-.invoice-party h4 {
-  color: var(--color-navy-panel);
-  font-size: 0.9rem;
-  margin: 0 0 0.35rem;
+  gap: 2rem;
+  margin-bottom: 1.75rem;
 }
 
 .invoice-party-label {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.12em;
   color: #8b93a0;
   margin-bottom: 0.35rem;
 }
@@ -1369,6 +1474,8 @@ input[type="number"] {
 .invoice-party strong {
   display: block;
   margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+  color: #002042;
 }
 
 .invoice-party p {
@@ -1376,13 +1483,6 @@ input[type="number"] {
   color: #444;
   font-size: 0.85rem;
   line-height: 1.5;
-}
-
-.invoice-meta-row {
-  display: flex;
-  gap: 2rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.85rem;
 }
 
 .invoice-items-table {
@@ -1393,50 +1493,86 @@ input[type="number"] {
 
 .invoice-items-table th {
   text-align: left;
-  background: #f2f4f7;
+  background: #002042;
+  color: #fff;
   padding: 0.6rem 0.75rem;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.1em;
+}
+
+.invoice-items-table th:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.invoice-items-table th:last-child {
+  border-radius: 0 6px 6px 0;
 }
 
 .invoice-items-table th:not(:first-child),
 .invoice-items-table td:not(:first-child) {
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .invoice-items-table td {
-  padding: 0.6rem 0.75rem;
+  padding: 0.65rem 0.75rem;
   border-bottom: 1px solid #e7eaef;
   font-size: 0.85rem;
 }
 
 .invoice-summary-box {
-  border: 1px solid #d6dbe2;
-  border-radius: 6px;
-  width: 320px;
+  width: 300px;
   margin-left: auto;
-  overflow: hidden;
-}
-
-.invoice-summary-box h4 {
-  margin: 0;
-  background: #f2f4f7;
-  padding: 0.6rem 1rem;
-  font-size: 0.85rem;
-  text-align: center;
 }
 
 .invoice-summary-row {
   display: flex;
   justify-content: space-between;
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 0.9rem;
   font-size: 0.85rem;
-  border-top: 1px solid #e7eaef;
+  border-bottom: 1px solid #e7eaef;
+  font-variant-numeric: tabular-nums;
 }
 
 .invoice-summary-row.total {
   font-weight: 700;
+  font-size: 0.95rem;
+  background: #002042;
+  color: #fff;
+  border-bottom: none;
+  border-radius: 6px;
+  margin-top: 0.35rem;
+  padding: 0.6rem 0.9rem;
+}
+
+.invoice-notes {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e6ec;
+}
+
+.invoice-notes p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #444;
+  line-height: 1.5;
+}
+
+/* System reference footer - ties the printed page back to the exact record
+   (and its audit trail) in Quot:D. */
+.invoice-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 2.25rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid #002042;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  color: #8b93a0;
+  text-transform: uppercase;
 }
 
 /* ---------- Responsive: tablet / narrow ---------- */

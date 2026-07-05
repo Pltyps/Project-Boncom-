@@ -6,6 +6,8 @@ export interface AuthUser {
   email: string;
   name: string;
   role: Role;
+  /** Demo accounts get a role switcher in the nav (see App.tsx). */
+  demo?: boolean;
 }
 
 const ROLE_RANK: Record<Role, number> = { user: 0, dev: 1, admin: 2 };

@@ -1,7 +1,7 @@
 import { Pool, PoolClient } from "pg";
 import { SessionUser } from "./auth";
 
-type EntityType = "client" | "estimate";
+type EntityType = "client" | "estimate" | "user";
 type Action = "create" | "update" | "delete";
 
 export interface FieldChange {

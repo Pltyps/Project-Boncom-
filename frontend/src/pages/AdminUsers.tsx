@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type AdminUser } from "../lib/api";
+import { useAuth } from "../lib/authContext";
 import { formatDate } from "../lib/format";
 import { useToast } from "../lib/toast";
 import Skeleton from "../components/Skeleton";
@@ -9,6 +10,7 @@ const ROLES = ["user", "dev", "admin"] as const;
 export default function AdminUsers() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user: me } = useAuth();
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -63,7 +65,19 @@ export default function AdminUsers() {
             </span>
             <span>
               <span className="row-label">Role</span>
-              <select className="select" value={u.role} onChange={(e) => handleRoleChange(u.id, e.target.value)}>
+              {/* Own row is locked - the backend refuses self-changes so an
+                  admin can't accidentally demote themselves out of this page. */}
+              <select
+                className="select"
+                value={u.role}
+                disabled={me?.email.toLowerCase() === u.email.toLowerCase()}
+                title={
+                  me?.email.toLowerCase() === u.email.toLowerCase()
+                    ? "You can't change your own role"
+                    : undefined
+                }
+                onChange={(e) => handleRoleChange(u.id, e.target.value)}
+              >
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
                     {r}
